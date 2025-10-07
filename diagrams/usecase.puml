@@ -1,0 +1,21 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+
+actor User
+rectangle "Plagiarism Detection System" {
+  usecase "Enter/Load Document A" as UC1
+  usecase "Enter/Load Document B" as UC2
+  usecase "Check Plagiarism" as UC3
+  usecase "View Similarity & Verdict" as UC4
+  usecase "Store Result on Blockchain" as UC5
+  usecase "View History" as UC6
+}
+
+User --> UC1
+User --> UC2
+User --> UC3
+UC3 --> UC4
+UC3 --> UC5
+User --> UC6
+@enduml
