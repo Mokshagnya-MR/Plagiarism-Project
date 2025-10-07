@@ -1,0 +1,24 @@
+@startuml
+start
+:User inputs text A and B
+or loads from files;
+:Preprocess texts (lowercase, remove punctuation/numbers, stopwords);
+:Extract features
+(Cosine: term frequencies,
+ Jaccard: unique tokens);
+:Compute similarity (Cosine, Jaccard);
+if (Cosine% > 70?) then (yes)
+  :Verdict = High;
+else (no)
+  if (Cosine% >= 30?) then (yes)
+    :Verdict = Moderate;
+  else
+    :Verdict = Safe;
+  endif
+endif
+:Create blockchain block with
+metadata + score;
+:Append to chain and persist;
+:Display similarity and verdict;
+stop
+@enduml

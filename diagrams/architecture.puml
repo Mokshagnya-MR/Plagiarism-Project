@@ -1,0 +1,59 @@
+@startuml
+skinparam classAttributeIconSize 0
+
+package "Plagiarism Detection System" {
+  class Document {
+    - title: String
+    - author: String
+    - submissionDate: String
+    - text: String
+    - plagiarismScore: double
+    + extractText(): String
+    + calculateSimilarity(other: Document): double
+  }
+
+  class Block {
+    - index: int
+    - timestamp: String
+    - document: Document
+    - previousHash: String
+    - hash: String
+    + computeHash(): String
+  }
+
+  class Blockchain {
+    - chain: List<Block>
+    + addBlock(doc: Document): Block
+    + isChainValid(): boolean
+    + getChain(): List<Block>
+  }
+
+  class PlagiarismChecker {
+    + checkPlagiarism(d1: Document, d2: Document): PlagiarismResult
+    + cosineSimilarity(a: String, b: String): double
+    + jaccardIndex(a: String, b: String): double
+  }
+
+  class PlagiarismAPIClient {
+    + checkPlagiarismAPI(textA: String, textB: String): double
+  }
+
+  class StorageManager {
+    + saveChainToFile(chain: Blockchain)
+    + loadChainFromFile(): Blockchain
+  }
+
+  class SwingApp {
+    + displayForm()
+    + showResult()
+  }
+
+  Document <-- Block
+  Block *-- Document
+  Blockchain *-- Block
+  SwingApp --> PlagiarismChecker
+  SwingApp --> StorageManager
+  SwingApp --> Blockchain
+}
+
+@enduml

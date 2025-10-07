@@ -1,0 +1,7 @@
+/workspace/src/main/java/com/example/plagiarism/SwingApp.java
+/workspace/src/main/java/com/example/plagiarism/Document.java
+/workspace/src/main/java/com/example/plagiarism/Block.java
+/workspace/src/main/java/com/example/plagiarism/PlagiarismAPIClient.java
+/workspace/src/main/java/com/example/plagiarism/PlagiarismChecker.java
+/workspace/src/main/java/com/example/plagiarism/StorageManager.java
+/workspace/src/main/java/com/example/plagiarism/Blockchain.java
