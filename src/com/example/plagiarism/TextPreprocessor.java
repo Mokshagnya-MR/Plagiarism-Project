@@ -36,15 +36,11 @@ public class TextPreprocessor {
     }
 
     private static List<String> splitWords(String text) {
-        BreakIterator boundary = BreakIterator.getWordInstance(Locale.ROOT);
-        boundary.setText(text);
+        // Beginner-friendly split on whitespace
+        String[] parts = text.trim().split("\\s+");
         List<String> result = new ArrayList<>();
-        int start = boundary.first();
-        for (int end = boundary.next(); end != BreakIterator.DONE; start = end, end = boundary.next()) {
-            String word = text.substring(start, end).trim();
-            if (!word.isEmpty() && word.chars().allMatch(Character::isLetter)) {
-                result.add(word);
-            }
+        for (String p : parts) {
+            if (!p.isBlank()) result.add(p);
         }
         return result;
     }

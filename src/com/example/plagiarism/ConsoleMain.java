@@ -11,11 +11,8 @@ public class ConsoleMain {
         Document doc1 = new Document("Doc1", System.getProperty("user.name"), LocalDate.now().toString(), text1);
         Document doc2 = new Document("Doc2", System.getProperty("user.name"), LocalDate.now().toString(), text2);
 
-        SimilarityAlgorithm cosine = new CosineSimilarity();
-        SimilarityAlgorithm jaccard = new JaccardIndex();
-
-        double cosScore = PlagiarismChecker.computeSimilarity(doc1, doc2, cosine);
-        double jacScore = PlagiarismChecker.computeSimilarity(doc1, doc2, jaccard);
+        double cosScore = PlagiarismChecker.computeSimilarity(doc1, doc2, "Cosine");
+        double jacScore = PlagiarismChecker.computeSimilarity(doc1, doc2, "Jaccard");
 
         String cosVerdict = PlagiarismChecker.verdictFor(cosScore);
         String jacVerdict = PlagiarismChecker.verdictFor(jacScore);

@@ -21,11 +21,11 @@ public class Document {
         return text;
     }
 
-    public double calculateSimilarity(Document other, SimilarityAlgorithm algorithm) {
-        if (other == null || algorithm == null) {
+    public double calculateSimilarity(Document other, String algorithmName) {
+        if (other == null || algorithmName == null) {
             return 0.0;
         }
-        return PlagiarismChecker.computeSimilarity(this, other, algorithm);
+        return PlagiarismChecker.computeSimilarity(this, other, algorithmName);
     }
 
     public String getTitle() {

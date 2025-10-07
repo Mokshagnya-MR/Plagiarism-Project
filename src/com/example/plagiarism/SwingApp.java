@@ -113,7 +113,7 @@ public class SwingApp {
         Document doc1 = new Document("Doc1", System.getProperty("user.name"), LocalDate.now().toString(), text1);
         Document doc2 = new Document("Doc2", System.getProperty("user.name"), LocalDate.now().toString(), text2);
 
-        SimilarityAlgorithm algorithm = "Jaccard".equals(algorithmBox.getSelectedItem()) ? new JaccardIndex() : new CosineSimilarity();
+        String algorithm = (String) algorithmBox.getSelectedItem();
         PlagiarismChecker.Result result = PlagiarismChecker.checkPlagiarism(doc1, doc2, algorithm);
 
         double percent = result.score() * 100.0;
