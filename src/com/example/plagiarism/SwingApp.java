@@ -19,6 +19,7 @@ public class SwingApp {
     private final JComboBox<String> algorithmBox;
     private final JLabel resultLabel;
     private final DefaultListModel<String> historyModel;
+    private final JList<String> historyList;
     private final Blockchain blockchain;
     private final File chainFile;
 
@@ -43,6 +44,7 @@ public class SwingApp {
         JButton apiButton = new JButton("Use Mock API for Doc1");
         JButton saveButton = new JButton("Save Chain");
         JButton loadButton = new JButton("Load Chain");
+        JButton compareSelectedButton = new JButton("Compare With Selected Block");
         controlPanel.add(new JLabel("Algorithm:"));
         controlPanel.add(algorithmBox);
         controlPanel.add(checkButton);
@@ -50,12 +52,13 @@ public class SwingApp {
         controlPanel.add(sourceFindButton);
         controlPanel.add(saveButton);
         controlPanel.add(loadButton);
+        controlPanel.add(compareSelectedButton);
 
         resultLabel = new JLabel("Result: ");
         resultLabel.setFont(resultLabel.getFont().deriveFont(Font.BOLD, 14f));
 
         historyModel = new DefaultListModel<>();
-        JList<String> historyList = new JList<>(historyModel);
+        historyList = new JList<>(historyModel);
         JScrollPane historyScroll = new JScrollPane(historyList);
         historyScroll.setPreferredSize(new Dimension(300, 0));
 
@@ -74,6 +77,7 @@ public class SwingApp {
         saveButton.addActionListener(e -> onSave());
         loadButton.addActionListener(e -> onLoad());
         sourceFindButton.addActionListener(e -> onAutoFindSourceForDoc1());
+        compareSelectedButton.addActionListener(e -> onCompareWithSelected());
     }
 
     private JPanel wrapWithToolbar(JTextArea area, String title) {
@@ -127,8 +131,8 @@ public class SwingApp {
             Block newBlock = blockchain.addBlock(original);
             historyModel.addElement(String.format("Block #%d | %.1f%% | %s | src=%s", newBlock.getIndex(), score * 100.0, verdict, original.getSourceUrl()));
         } else {
-            // Ask user for website link or file as fallback and store if provided
-            promptForAndStoreSource(suspect, algorithm);
+            // Ask user ONLY for website link as fallback and store if provided
+            promptForAndStoreUrlOnly(suspect, algorithm);
         }
     }
 
@@ -151,7 +155,7 @@ public class SwingApp {
             Block b1 = blockchain.addBlock(found1.get());
             historyModel.addElement(String.format("Block #%d | Doc1 src | %s", b1.getIndex(), src1));
         } else {
-            boolean provided = promptForAndStoreSource(doc1, algorithm);
+            boolean provided = promptForAndStoreUrlOnly(doc1, algorithm);
             if (!provided) {
                 // Store suspect metadata (no source)
                 Block b1 = blockchain.addBlock(new Document(doc1.getTitle(), doc1.getAuthor(), doc1.getSubmissionDate(), doc1.getText(), ""));
@@ -222,6 +226,26 @@ public class SwingApp {
         return false;
     }
 
+    private boolean promptForAndStoreUrlOnly(Document suspect, String algorithm) {
+        SourceFinder finder = new SourceFinder();
+        String url = JOptionPane.showInputDialog(frame, "Enter source URL:", "https://");
+        if (url != null && !url.isBlank()) {
+            var docOpt = finder.buildDocumentFromUrl(url);
+            if (docOpt.isPresent()) {
+                Document original = docOpt.get();
+                double score = PlagiarismChecker.computeSimilarity(suspect, original, algorithm);
+                String verdict = PlagiarismChecker.verdictFor(score);
+                resultLabel.setText(String.format("User URL: %.1f%% - %s | %s", score * 100.0, verdict, original.getSourceUrl()));
+                Block newBlock = blockchain.addBlock(original);
+                historyModel.addElement(String.format("Block #%d | %.1f%% | %s | src=%s", newBlock.getIndex(), score * 100.0, verdict, original.getSourceUrl()));
+                return true;
+            } else {
+                JOptionPane.showMessageDialog(frame, "Failed to read from provided URL.");
+            }
+        }
+        return false;
+    }
+
     private void onSave() {
         try {
             StorageManager.saveChainToFile(blockchain, chainFile);
@@ -246,6 +270,39 @@ public class SwingApp {
         } catch (IOException ex) {
             JOptionPane.showMessageDialog(frame, "Load failed: " + ex.getMessage());
         }
+    }
+
+    private void onCompareWithSelected() {
+        int idx = historyList.getSelectedIndex();
+        if (idx < 0) {
+            JOptionPane.showMessageDialog(frame, "Select a block from the list on the right.");
+            return;
+        }
+        // Fetch corresponding block by parsing the displayed string
+        String item = historyModel.get(idx);
+        int hashIndex = item.indexOf('#');
+        int pipeIndex = item.indexOf('|');
+        if (hashIndex < 0 || pipeIndex < 0 || pipeIndex <= hashIndex) {
+            JOptionPane.showMessageDialog(frame, "Could not parse selected block index.");
+            return;
+        }
+        String numStr = item.substring(hashIndex + 1, pipeIndex).trim();
+        int blockNumber;
+        try { blockNumber = Integer.parseInt(numStr); } catch (Exception ex) { JOptionPane.showMessageDialog(frame, "Invalid block selection."); return; }
+
+        List<Block> blocks = blockchain.getBlocks();
+        if (blockNumber < 0 || blockNumber >= blocks.size()) {
+            JOptionPane.showMessageDialog(frame, "Block out of range.");
+            return;
+        }
+
+        String currentText = textArea1.getText();
+        Document suspect = new Document("Doc1", System.getProperty("user.name"), java.time.LocalDate.now().toString(), currentText);
+        Document original = blocks.get(blockNumber).getDocument();
+        String algorithm = (String) algorithmBox.getSelectedItem();
+        double score = PlagiarismChecker.computeSimilarity(suspect, original, algorithm);
+        String verdict = PlagiarismChecker.verdictFor(score);
+        resultLabel.setText(String.format("Selected Block #%d | %.1f%% - %s | %s", blockNumber, score * 100.0, verdict, original.getSourceUrl()));
     }
 
     public void displayForm() {
