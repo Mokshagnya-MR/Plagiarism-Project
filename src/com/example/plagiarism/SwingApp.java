@@ -40,7 +40,7 @@ public class SwingApp {
         JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         algorithmBox = new JComboBox<>(new String[]{"Ensemble", "Cosine", "Jaccard", "ShingleJaccard"});
         JButton checkButton = new JButton("Check Plagiarism");
-        JButton sourceFindButton = new JButton("Auto-Find Source (Doc1)");
+        JButton sourceFindButton = new JButton("Auto-Find Source + Check");
         JButton apiButton = new JButton("Use Mock API for Doc1");
         JButton saveButton = new JButton("Save Chain");
         JButton loadButton = new JButton("Load Chain");
