@@ -176,55 +176,8 @@ public class SwingApp {
         resultLabel.setText(String.format("Result: %.1f%% - %s | Doc1 src: %s", percent, result.verdict(), src1.isBlank()?"<none>":src1));
     }
 
-    private boolean promptForAndStoreSource(Document suspect, String algorithm) {
-        SourceFinder finder = new SourceFinder();
-        Object[] options = {"Enter URL", "Pick File", "Cancel"};
-        int choice = JOptionPane.showOptionDialog(frame,
-                "No source found automatically. Provide a website link or choose a file.",
-                "Provide Original Source",
-                JOptionPane.DEFAULT_OPTION,
-                JOptionPane.QUESTION_MESSAGE,
-                null,
-                options,
-                options[0]);
-        if (choice == 0) { // Enter URL
-            String url = JOptionPane.showInputDialog(frame, "Enter source URL:", "https://");
-            if (url != null && !url.isBlank()) {
-                var docOpt = finder.buildDocumentFromUrl(url);
-                if (docOpt.isPresent()) {
-                    Document original = docOpt.get();
-                    double score = PlagiarismChecker.computeSimilarity(suspect, original, algorithm);
-                    String verdict = PlagiarismChecker.verdictFor(score);
-                    resultLabel.setText(String.format("User URL: %.1f%% - %s | %s", score * 100.0, verdict, original.getSourceUrl()));
-                    Block newBlock = blockchain.addBlock(original);
-                    historyModel.addElement(String.format("Block #%d | %.1f%% | %s | src=%s", newBlock.getIndex(), score * 100.0, verdict, original.getSourceUrl()));
-                    return true;
-                } else {
-                    JOptionPane.showMessageDialog(frame, "Failed to read from provided URL.");
-                }
-            }
-        } else if (choice == 1) { // Pick File
-            JFileChooser chooser = new JFileChooser();
-            chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Text Files", "txt", "md"));
-            int result = chooser.showOpenDialog(frame);
-            if (result == JFileChooser.APPROVE_OPTION) {
-                java.nio.file.Path path = chooser.getSelectedFile().toPath();
-                var docOpt = SourceFinder.buildDocumentFromFile(path);
-                if (docOpt.isPresent()) {
-                    Document original = docOpt.get();
-                    double score = PlagiarismChecker.computeSimilarity(suspect, original, algorithm);
-                    String verdict = PlagiarismChecker.verdictFor(score);
-                    resultLabel.setText(String.format("User File: %.1f%% - %s | %s", score * 100.0, verdict, original.getSourceUrl()));
-                    Block newBlock = blockchain.addBlock(original);
-                    historyModel.addElement(String.format("Block #%d | %.1f%% | %s | src=%s", newBlock.getIndex(), score * 100.0, verdict, original.getSourceUrl()));
-                    return true;
-                } else {
-                    JOptionPane.showMessageDialog(frame, "Failed to read selected file.");
-                }
-            }
-        }
-        return false;
-    }
+    // Deprecated (kept for potential future reference); no longer used.
+    private boolean promptForAndStoreSource(Document suspect, String algorithm) { return false; }
 
     private boolean promptForAndStoreUrlOnly(Document suspect, String algorithm) {
         SourceFinder finder = new SourceFinder();

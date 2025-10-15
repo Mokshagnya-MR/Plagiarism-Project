@@ -36,9 +36,8 @@ public class ConsoleMain {
             System.out.println("→ Original source stored to blockchain [Block #" + block.getIndex() + "]");
             System.out.println("   Source URL: " + original.getSourceUrl());
         } else {
-            // Console fallback: read from env SOURCE_URL or SOURCE_FILE
+            // Console fallback: read from env SOURCE_URL (file fallback removed)
             String url = System.getenv("SOURCE_URL");
-            String file = System.getenv("SOURCE_FILE");
             boolean stored = false;
             if (url != null && !url.isBlank()) {
                 var fromUrl = finder.buildDocumentFromUrl(url);
@@ -46,17 +45,6 @@ public class ConsoleMain {
                     Document original = fromUrl.get();
                     Block block = blockchain.addBlock(original);
                     System.out.println("→ User-provided URL stored as original [Block #" + block.getIndex() + "]");
-                    System.out.println("   Source URL: " + original.getSourceUrl());
-                    stored = true;
-                }
-            }
-            if (!stored && file != null && !file.isBlank()) {
-                java.nio.file.Path p = java.nio.file.Path.of(file);
-                var fromFile = SourceFinder.buildDocumentFromFile(p);
-                if (fromFile.isPresent()) {
-                    Document original = fromFile.get();
-                    Block block = blockchain.addBlock(original);
-                    System.out.println("→ User-provided file stored as original [Block #" + block.getIndex() + "]");
                     System.out.println("   Source URL: " + original.getSourceUrl());
                     stored = true;
                 }
