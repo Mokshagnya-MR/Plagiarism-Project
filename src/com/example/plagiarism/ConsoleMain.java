@@ -36,9 +36,36 @@ public class ConsoleMain {
             System.out.println("→ Original source stored to blockchain [Block #" + block.getIndex() + "]");
             System.out.println("   Source URL: " + original.getSourceUrl());
         } else {
-            // Fall back: store suspect metadata only (sourceUrl empty)
-            Block block = blockchain.addBlock(new Document(doc1.getTitle(), doc1.getAuthor(), doc1.getSubmissionDate(), doc1.getText(), ""));
-            System.out.println("→ No source found. Stored suspect document metadata [Block #" + block.getIndex() + "]");
+            // Console fallback: read from env SOURCE_URL or SOURCE_FILE
+            String url = System.getenv("SOURCE_URL");
+            String file = System.getenv("SOURCE_FILE");
+            boolean stored = false;
+            if (url != null && !url.isBlank()) {
+                var fromUrl = finder.buildDocumentFromUrl(url);
+                if (fromUrl.isPresent()) {
+                    Document original = fromUrl.get();
+                    Block block = blockchain.addBlock(original);
+                    System.out.println("→ User-provided URL stored as original [Block #" + block.getIndex() + "]");
+                    System.out.println("   Source URL: " + original.getSourceUrl());
+                    stored = true;
+                }
+            }
+            if (!stored && file != null && !file.isBlank()) {
+                java.nio.file.Path p = java.nio.file.Path.of(file);
+                var fromFile = SourceFinder.buildDocumentFromFile(p);
+                if (fromFile.isPresent()) {
+                    Document original = fromFile.get();
+                    Block block = blockchain.addBlock(original);
+                    System.out.println("→ User-provided file stored as original [Block #" + block.getIndex() + "]");
+                    System.out.println("   Source URL: " + original.getSourceUrl());
+                    stored = true;
+                }
+            }
+            if (!stored) {
+                // Fall back: store suspect metadata only (sourceUrl empty)
+                Block block = blockchain.addBlock(new Document(doc1.getTitle(), doc1.getAuthor(), doc1.getSubmissionDate(), doc1.getText(), ""));
+                System.out.println("→ No source found. Stored suspect document metadata [Block #" + block.getIndex() + "]");
+            }
         }
 
         try {

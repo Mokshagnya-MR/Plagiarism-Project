@@ -226,4 +226,19 @@ public class SourceFinder {
             return Optional.empty();
         }
     }
+
+    // Convenience to build a Document from a URL (http/https/file)
+    public Optional<Document> buildDocumentFromUrl(String url) {
+        try {
+            if (url == null || url.isBlank()) return Optional.empty();
+            String normalized = normalizeUrl(url);
+            String text = fetchText(normalized);
+            if (text == null || text.isBlank()) return Optional.empty();
+            String title = "Original Source";
+            Document doc = new Document(title, "", LocalDate.now().toString(), text, normalized);
+            return Optional.of(doc);
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
 }
