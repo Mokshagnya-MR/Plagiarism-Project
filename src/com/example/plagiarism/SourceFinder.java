@@ -13,8 +13,10 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -28,9 +30,11 @@ import java.util.regex.Pattern;
  * - Returns Document of the original source when found
  */
 public class SourceFinder {
-    private static final double MIN_ACCEPTABLE_SIMILARITY = 0.20; // 20% to be more tolerant
+    private static final double MIN_ACCEPTABLE_SIMILARITY = 0.15; // Lowered for paraphrased matches
     private static final int MAX_SEARCH_TOKENS = 8;
-    private static final int MAX_CANDIDATE_LINKS = 12;
+    private static final int MAX_CANDIDATE_LINKS = 20;
+    private static final int PHRASE_WINDOW_SIZE = 12;
+    private static final int MAX_PHRASE_WINDOWS = 6;
 
     private final HttpClient httpClient;
 
@@ -51,19 +55,116 @@ public class SourceFinder {
         Optional<Document> byEmbedded = pickBestCandidate(embeddedUrls, suspect, algorithmName);
         if (byEmbedded.isPresent()) return byEmbedded;
 
-        // 2) Web search using top keywords and exact phrase; boost nasa.gov
-        String query = buildKeywordQuery(suspectText);
-        List<String> linksFromSearch = new ArrayList<>();
-        String phrase = pickRepresentativePhrase(suspectText);
-        if (!phrase.isBlank()) {
-            linksFromSearch.addAll(searchDuckDuckGoLinks('"' + phrase + '"'));
+        // 2) Multi-provider search using exact phrases and keywords; pick most frequent URLs first
+        List<String> queries = new ArrayList<>();
+        queries.add('"' + pickRepresentativePhrase(suspectText) + '"');
+        queries.addAll(buildPhraseQueries(suspectText));
+        queries.add(buildKeywordQuery(suspectText));
+
+        List<String> allLinks = new ArrayList<>();
+        for (String q : queries) {
+            if (q == null || q.isBlank()) continue;
+            allLinks.addAll(searchAllProviders(q));
         }
-        linksFromSearch.addAll(searchDuckDuckGoLinks(query + " site:nasa.gov"));
-        linksFromSearch.addAll(searchDuckDuckGoLinks(query));
-        Optional<Document> bySearch = pickBestCandidate(linksFromSearch, suspect, algorithmName);
+        // Count frequency and sort URLs by descending frequency
+        List<String> prioritized = prioritizeByFrequency(allLinks);
+        Optional<Document> bySearch = pickBestCandidate(prioritized, suspect, algorithmName);
         if (bySearch.isPresent()) return bySearch;
 
         return Optional.empty();
+    }
+
+    private List<String> searchAllProviders(String query) {
+        List<String> links = new ArrayList<>();
+        // Optional providers via env vars
+        links.addAll(searchBingLinks(query));
+        links.addAll(searchSerpApiLinks(query));
+        links.addAll(searchSearxngLinks(query));
+        // Always include DuckDuckGo HTML fallback
+        links.addAll(searchDuckDuckGoLinks(query));
+        return links;
+    }
+
+    private List<String> searchBingLinks(String query) {
+        String apiKey = System.getenv("BING_API_KEY");
+        if (apiKey == null || apiKey.isBlank()) return List.of();
+        try {
+            URI uri = new URI("https", "api.bing.microsoft.com", "/v7.0/search", "q=" + urlEncode(query), null);
+            HttpRequest req = HttpRequest.newBuilder(uri)
+                    .timeout(Duration.ofSeconds(10))
+                    .header("Ocp-Apim-Subscription-Key", apiKey)
+                    .GET().build();
+            HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if (resp.statusCode() >= 200 && resp.statusCode() < 300) {
+                return extractJsonUrls(resp.body());
+            }
+        } catch (Exception ignored) {}
+        return List.of();
+    }
+
+    private List<String> searchSerpApiLinks(String query) {
+        String apiKey = System.getenv("SERPAPI_KEY");
+        if (apiKey == null || apiKey.isBlank()) return List.of();
+        try {
+            URI uri = new URI("https", "serpapi.com", "/search.json", "engine=google&q=" + urlEncode(query) + "&api_key=" + urlEncode(apiKey), null);
+            String json = fetch(uri);
+            if (json == null) return List.of();
+            return extractJsonUrls(json);
+        } catch (Exception ignored) {}
+        return List.of();
+    }
+
+    private List<String> searchSearxngLinks(String query) {
+        String base = System.getenv("SEARXNG_BASE_URL");
+        if (base == null || base.isBlank()) return List.of();
+        try {
+            if (base.endsWith("/")) base = base.substring(0, base.length()-1);
+            URI uri = new URI(base + "/search?q=" + urlEncode(query) + "&format=json");
+            String json = fetch(uri);
+            if (json == null) return List.of();
+            return extractJsonUrls(json);
+        } catch (Exception ignored) {}
+        return List.of();
+    }
+
+    private static List<String> extractJsonUrls(String json) {
+        if (json == null || json.isBlank()) return List.of();
+        List<String> urls = new ArrayList<>();
+        Matcher m = Pattern.compile("\"url\"\s*:\s*\"(https?://[^\\\"]+)\"").matcher(json);
+        while (m.find()) {
+            String u = m.group(1);
+            if (u.contains("duckduckgo.com/l/?uddg=")) u = decodeDdgRedirect(u);
+            urls.add(u);
+            if (urls.size() >= MAX_CANDIDATE_LINKS) break;
+        }
+        return urls;
+    }
+
+    private static List<String> buildPhraseQueries(String text) {
+        List<String> words = TextPreprocessor.preprocessToWordsPreservingOrder(text);
+        List<String> phrases = new ArrayList<>();
+        if (words.isEmpty()) return phrases;
+        int step = Math.max(1, words.size() / Math.max(1, MAX_PHRASE_WINDOWS));
+        for (int start = 0; start < words.size() && phrases.size() < MAX_PHRASE_WINDOWS; start += step) {
+            int end = Math.min(words.size(), start + PHRASE_WINDOW_SIZE);
+            if (end - start < 4) break;
+            String phrase = String.join(" ", words.subList(start, end));
+            phrases.add('"' + phrase + '"');
+        }
+        return phrases;
+    }
+
+    private static List<String> prioritizeByFrequency(List<String> urls) {
+        Map<String, Integer> counts = new HashMap<>();
+        for (String u : urls) {
+            if (u == null || u.isBlank()) continue;
+            counts.merge(u, 1, Integer::sum);
+        }
+        List<Map.Entry<String,Integer>> entries = new ArrayList<>(counts.entrySet());
+        entries.sort((a,b) -> Integer.compare(b.getValue(), a.getValue()));
+        List<String> sorted = new ArrayList<>();
+        for (Map.Entry<String,Integer> e : entries) sorted.add(e.getKey());
+        return sorted;
     }
 
     private Optional<Document> pickBestCandidate(List<String> urls, Document suspect, String algorithmName) {
