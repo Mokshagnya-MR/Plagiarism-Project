@@ -25,8 +25,21 @@ public class ConsoleMain {
         System.out.printf("→ Verdict: %s%n", jacVerdict);
 
         Blockchain blockchain = new Blockchain();
-        Block block = blockchain.addBlock(doc1);
-        System.out.println("→ Blockchain Entry Created [Block #" + block.getIndex() + "]");
+
+        // Try auto-finding original for doc1 and store ORIGINAL in blockchain if found
+        SourceFinder finder = new SourceFinder();
+        String algorithm = "Cosine";
+        var originalOpt = finder.autoFindOriginal(doc1, algorithm);
+        if (originalOpt.isPresent()) {
+            Document original = originalOpt.get();
+            Block block = blockchain.addBlock(original);
+            System.out.println("→ Original source stored to blockchain [Block #" + block.getIndex() + "]");
+            System.out.println("   Source URL: " + original.getSourceUrl());
+        } else {
+            // Fall back: store suspect metadata only (sourceUrl empty)
+            Block block = blockchain.addBlock(new Document(doc1.getTitle(), doc1.getAuthor(), doc1.getSubmissionDate(), doc1.getText(), ""));
+            System.out.println("→ No source found. Stored suspect document metadata [Block #" + block.getIndex() + "]");
+        }
 
         try {
             File chainFile = new File(System.getProperty("user.home"), "plagiarism_chain.txt");

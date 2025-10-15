@@ -7,13 +7,19 @@ public class Document {
     private final String author;
     private final String submissionDate; // ISO-8601 date string
     private final String text;
+    private final String sourceUrl; // Optional: URL or file:// path to original source
     private double plagiarismScore; // 0.0 - 1.0
 
     public Document(String title, String author, String submissionDate, String text) {
+        this(title, author, submissionDate, text, "");
+    }
+
+    public Document(String title, String author, String submissionDate, String text, String sourceUrl) {
         this.title = title == null ? "" : title;
         this.author = author == null ? "" : author;
         this.submissionDate = submissionDate == null ? "" : submissionDate;
         this.text = text == null ? "" : text;
+        this.sourceUrl = sourceUrl == null ? "" : sourceUrl;
         this.plagiarismScore = 0.0;
     }
 
@@ -44,6 +50,10 @@ public class Document {
         return text;
     }
 
+    public String getSourceUrl() {
+        return sourceUrl;
+    }
+
     public double getPlagiarismScore() {
         return plagiarismScore;
     }
@@ -65,7 +75,7 @@ public class Document {
 
     @Override
     public int hashCode() {
-        return Objects.hash(title, author, submissionDate, text);
+        return Objects.hash(title, author, submissionDate, text, sourceUrl);
     }
 
     @Override
@@ -74,6 +84,7 @@ public class Document {
                 "title='" + title + '\'' +
                 ", author='" + author + '\'' +
                 ", submissionDate='" + submissionDate + '\'' +
+                ", sourceUrl='" + sourceUrl + '\'' +
                 ", plagiarismScore=" + plagiarismScore +
                 '}';
     }

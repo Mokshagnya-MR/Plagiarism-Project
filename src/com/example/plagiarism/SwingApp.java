@@ -39,6 +39,7 @@ public class SwingApp {
         JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         algorithmBox = new JComboBox<>(new String[]{"Cosine", "Jaccard"});
         JButton checkButton = new JButton("Check Plagiarism");
+        JButton sourceFindButton = new JButton("Auto-Find Source (Doc1)");
         JButton apiButton = new JButton("Use Mock API for Doc1");
         JButton saveButton = new JButton("Save Chain");
         JButton loadButton = new JButton("Load Chain");
@@ -46,6 +47,7 @@ public class SwingApp {
         controlPanel.add(algorithmBox);
         controlPanel.add(checkButton);
         controlPanel.add(apiButton);
+        controlPanel.add(sourceFindButton);
         controlPanel.add(saveButton);
         controlPanel.add(loadButton);
 
@@ -71,6 +73,7 @@ public class SwingApp {
         apiButton.addActionListener(this::onApiDoc1);
         saveButton.addActionListener(e -> onSave());
         loadButton.addActionListener(e -> onLoad());
+        sourceFindButton.addActionListener(e -> onAutoFindSourceForDoc1());
     }
 
     private JPanel wrapWithToolbar(JTextArea area, String title) {
@@ -107,6 +110,47 @@ public class SwingApp {
         resultLabel.setText(String.format("Result (API Doc1): %.1f%% - %s", score * 100.0, verdict));
     }
 
+    private void onAutoFindSourceForDoc1() {
+        String text1 = textArea1.getText();
+        Document suspect = new Document("Doc1", System.getProperty("user.name"), LocalDate.now().toString(), text1);
+        SourceFinder finder = new SourceFinder();
+        String algorithm = (String) algorithmBox.getSelectedItem();
+        var found = finder.autoFindOriginal(suspect, algorithm);
+        if (found.isPresent()) {
+            Document original = found.get();
+            // Compare and update result label
+            double score = PlagiarismChecker.computeSimilarity(suspect, original, algorithm);
+            String verdict = PlagiarismChecker.verdictFor(score);
+            resultLabel.setText(String.format("Auto Source Found: %.1f%% - %s | %s", score * 100.0, verdict, original.getSourceUrl()));
+
+            // Store ORIGINAL in blockchain instead of suspect
+            Block newBlock = blockchain.addBlock(original);
+            historyModel.addElement(String.format("Block #%d | %.1f%% | %s | src=%s", newBlock.getIndex(), score * 100.0, verdict, original.getSourceUrl()));
+        } else {
+            // Ask user to provide a source file as fallback
+            int choice = JOptionPane.showConfirmDialog(frame, "No source found automatically. Provide a source file?", "Fallback", JOptionPane.YES_NO_OPTION);
+            if (choice == JOptionPane.YES_OPTION) {
+                JFileChooser chooser = new JFileChooser();
+                chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Text Files", "txt", "md"));
+                int result = chooser.showOpenDialog(frame);
+                if (result == JFileChooser.APPROVE_OPTION) {
+                    java.nio.file.Path path = chooser.getSelectedFile().toPath();
+                    var docOpt = SourceFinder.buildDocumentFromFile(path);
+                    if (docOpt.isPresent()) {
+                        Document original = docOpt.get();
+                        double score = PlagiarismChecker.computeSimilarity(suspect, original, algorithm);
+                        String verdict = PlagiarismChecker.verdictFor(score);
+                        resultLabel.setText(String.format("User Source: %.1f%% - %s | %s", score * 100.0, verdict, original.getSourceUrl()));
+                        Block newBlock = blockchain.addBlock(original);
+                        historyModel.addElement(String.format("Block #%d | %.1f%% | %s | src=%s", newBlock.getIndex(), score * 100.0, verdict, original.getSourceUrl()));
+                    } else {
+                        JOptionPane.showMessageDialog(frame, "Failed to read selected file.");
+                    }
+                }
+            }
+        }
+    }
+
     private void onCheck(ActionEvent e) {
         String text1 = textArea1.getText();
         String text2 = textArea2.getText();
@@ -119,9 +163,9 @@ public class SwingApp {
         double percent = result.score() * 100.0;
         resultLabel.setText(String.format("Result: %.1f%% - %s", percent, result.verdict()));
 
-        // Record on blockchain
-        Block newBlock = blockchain.addBlock(doc1); // store doc1 metadata and score
-        historyModel.addElement(String.format("Block #%d | %.1f%% | %s", newBlock.getIndex(), percent, result.verdict()));
+        // Record suspect doc result (metadata only) but do NOT store as original. Users can use Auto-Find Source to store original.
+        Block newBlock = blockchain.addBlock(new Document(doc1.getTitle(), doc1.getAuthor(), doc1.getSubmissionDate(), doc1.getText(), ""));
+        historyModel.addElement(String.format("Block #%d | %.1f%% | %s | src=%s", newBlock.getIndex(), percent, result.verdict(), ""));
     }
 
     private void onSave() {
