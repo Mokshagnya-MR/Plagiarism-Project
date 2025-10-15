@@ -23,7 +23,9 @@ public class StorageManager {
                         escape(d.getTitle()),
                         escape(d.getAuthor()),
                         escape(d.getSubmissionDate()),
-                        escape(Double.toString(d.getPlagiarismScore()))
+                        escape(Double.toString(d.getPlagiarismScore())),
+                        escape(d.getSourceUrl()),
+                        escape(d.getText())
                 );
                 writer.write(line);
                 writer.newLine();
@@ -37,7 +39,7 @@ public class StorageManager {
             String line;
             while ((line = reader.readLine()) != null) {
                 String[] parts = split(line);
-                if (parts.length < 8) continue;
+                if (parts.length < 10) continue;
                 int index = Integer.parseInt(parts[0]);
                 String timestamp = unescape(parts[1]);
                 String previousHash = unescape(parts[2]);
@@ -46,7 +48,9 @@ public class StorageManager {
                 String author = unescape(parts[5]);
                 String date = unescape(parts[6]);
                 double score = Double.parseDouble(unescape(parts[7]));
-                Document doc = new Document(title, author, date, "");
+                String sourceUrl = unescape(parts[8]);
+                String text = unescape(parts[9]);
+                Document doc = new Document(title, author, date, text, sourceUrl);
                 doc.setPlagiarismScore(score);
                 Block block = new Block(index, timestamp, doc, previousHash, hash);
                 loaded.add(block);

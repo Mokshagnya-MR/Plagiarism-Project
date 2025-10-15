@@ -19,6 +19,7 @@ public class SwingApp {
     private final JComboBox<String> algorithmBox;
     private final JLabel resultLabel;
     private final DefaultListModel<String> historyModel;
+    private final JList<String> historyList;
     private final Blockchain blockchain;
     private final File chainFile;
 
@@ -37,23 +38,27 @@ public class SwingApp {
         inputPanel.add(wrapWithToolbar(textArea2, "Document 2"));
 
         JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        algorithmBox = new JComboBox<>(new String[]{"Cosine", "Jaccard"});
+        algorithmBox = new JComboBox<>(new String[]{"Ensemble", "Cosine", "Jaccard", "ShingleJaccard"});
         JButton checkButton = new JButton("Check Plagiarism");
+        JButton sourceFindButton = new JButton("Auto-Find Source + Check");
         JButton apiButton = new JButton("Use Mock API for Doc1");
         JButton saveButton = new JButton("Save Chain");
         JButton loadButton = new JButton("Load Chain");
+        JButton compareSelectedButton = new JButton("Compare With Selected Block");
         controlPanel.add(new JLabel("Algorithm:"));
         controlPanel.add(algorithmBox);
         controlPanel.add(checkButton);
         controlPanel.add(apiButton);
+        controlPanel.add(sourceFindButton);
         controlPanel.add(saveButton);
         controlPanel.add(loadButton);
+        controlPanel.add(compareSelectedButton);
 
         resultLabel = new JLabel("Result: ");
         resultLabel.setFont(resultLabel.getFont().deriveFont(Font.BOLD, 14f));
 
         historyModel = new DefaultListModel<>();
-        JList<String> historyList = new JList<>(historyModel);
+        historyList = new JList<>(historyModel);
         JScrollPane historyScroll = new JScrollPane(historyList);
         historyScroll.setPreferredSize(new Dimension(300, 0));
 
@@ -71,6 +76,8 @@ public class SwingApp {
         apiButton.addActionListener(this::onApiDoc1);
         saveButton.addActionListener(e -> onSave());
         loadButton.addActionListener(e -> onLoad());
+        sourceFindButton.addActionListener(e -> onAutoFindSourceForDoc1());
+        compareSelectedButton.addActionListener(e -> onCompareWithSelected());
     }
 
     private JPanel wrapWithToolbar(JTextArea area, String title) {
@@ -107,6 +114,28 @@ public class SwingApp {
         resultLabel.setText(String.format("Result (API Doc1): %.1f%% - %s", score * 100.0, verdict));
     }
 
+    private void onAutoFindSourceForDoc1() {
+        String text1 = textArea1.getText();
+        Document suspect = new Document("Doc1", System.getProperty("user.name"), LocalDate.now().toString(), text1);
+        SourceFinder finder = new SourceFinder();
+        String algorithm = (String) algorithmBox.getSelectedItem();
+        var found = finder.autoFindOriginal(suspect, algorithm);
+        if (found.isPresent()) {
+            Document original = found.get();
+            // Compare and update result label
+            double score = PlagiarismChecker.computeSimilarity(suspect, original, algorithm);
+            String verdict = PlagiarismChecker.verdictFor(score);
+            resultLabel.setText(String.format("Auto Source Found: %.1f%% - %s | %s", score * 100.0, verdict, original.getSourceUrl()));
+
+            // Store ORIGINAL in blockchain instead of suspect
+            Block newBlock = blockchain.addBlock(original);
+            historyModel.addElement(String.format("Block #%d | %.1f%% | %s | src=%s", newBlock.getIndex(), score * 100.0, verdict, original.getSourceUrl()));
+        } else {
+            // Ask user ONLY for website link as fallback and store if provided
+            promptForAndStoreUrlOnly(suspect, algorithm);
+        }
+    }
+
     private void onCheck(ActionEvent e) {
         String text1 = textArea1.getText();
         String text2 = textArea2.getText();
@@ -117,11 +146,57 @@ public class SwingApp {
         PlagiarismChecker.Result result = PlagiarismChecker.checkPlagiarism(doc1, doc2, algorithm);
 
         double percent = result.score() * 100.0;
-        resultLabel.setText(String.format("Result: %.1f%% - %s", percent, result.verdict()));
+        // Auto-find original for doc1 using SourceFinder
+        SourceFinder finder = new SourceFinder();
+        var found1 = finder.autoFindOriginal(doc1, algorithm);
+        String src1 = found1.map(Document::getSourceUrl).orElse("");
+        if (found1.isPresent()) {
+            // Store ORIGINAL for doc1
+            Block b1 = blockchain.addBlock(found1.get());
+            historyModel.addElement(String.format("Block #%d | Doc1 src | %s", b1.getIndex(), src1));
+        } else {
+            boolean provided = promptForAndStoreUrlOnly(doc1, algorithm);
+            if (!provided) {
+                // Store suspect metadata (no source)
+                Block b1 = blockchain.addBlock(new Document(doc1.getTitle(), doc1.getAuthor(), doc1.getSubmissionDate(), doc1.getText(), ""));
+                historyModel.addElement(String.format("Block #%d | Doc1 src | %s", b1.getIndex(), "<none>"));
+            }
+        }
 
-        // Record on blockchain
-        Block newBlock = blockchain.addBlock(doc1); // store doc1 metadata and score
-        historyModel.addElement(String.format("Block #%d | %.1f%% | %s", newBlock.getIndex(), percent, result.verdict()));
+        // Optionally also attempt for doc2 if provided
+        if (text2 != null && !text2.isBlank()) {
+            var found2 = finder.autoFindOriginal(doc2, algorithm);
+            String src2 = found2.map(Document::getSourceUrl).orElse("");
+            if (found2.isPresent()) {
+                Block b2 = blockchain.addBlock(found2.get());
+                historyModel.addElement(String.format("Block #%d | Doc2 src | %s", b2.getIndex(), src2));
+            }
+        }
+
+        resultLabel.setText(String.format("Result: %.1f%% - %s | Doc1 src: %s", percent, result.verdict(), src1.isBlank()?"<none>":src1));
+    }
+
+    // Deprecated (kept for potential future reference); no longer used.
+    private boolean promptForAndStoreSource(Document suspect, String algorithm) { return false; }
+
+    private boolean promptForAndStoreUrlOnly(Document suspect, String algorithm) {
+        SourceFinder finder = new SourceFinder();
+        String url = JOptionPane.showInputDialog(frame, "Enter source URL:", "https://");
+        if (url != null && !url.isBlank()) {
+            var docOpt = finder.buildDocumentFromUrl(url);
+            if (docOpt.isPresent()) {
+                Document original = docOpt.get();
+                double score = PlagiarismChecker.computeSimilarity(suspect, original, algorithm);
+                String verdict = PlagiarismChecker.verdictFor(score);
+                resultLabel.setText(String.format("User URL: %.1f%% - %s | %s", score * 100.0, verdict, original.getSourceUrl()));
+                Block newBlock = blockchain.addBlock(original);
+                historyModel.addElement(String.format("Block #%d | %.1f%% | %s | src=%s", newBlock.getIndex(), score * 100.0, verdict, original.getSourceUrl()));
+                return true;
+            } else {
+                JOptionPane.showMessageDialog(frame, "Failed to read from provided URL.");
+            }
+        }
+        return false;
     }
 
     private void onSave() {
@@ -148,6 +223,39 @@ public class SwingApp {
         } catch (IOException ex) {
             JOptionPane.showMessageDialog(frame, "Load failed: " + ex.getMessage());
         }
+    }
+
+    private void onCompareWithSelected() {
+        int idx = historyList.getSelectedIndex();
+        if (idx < 0) {
+            JOptionPane.showMessageDialog(frame, "Select a block from the list on the right.");
+            return;
+        }
+        // Fetch corresponding block by parsing the displayed string
+        String item = historyModel.get(idx);
+        int hashIndex = item.indexOf('#');
+        int pipeIndex = item.indexOf('|');
+        if (hashIndex < 0 || pipeIndex < 0 || pipeIndex <= hashIndex) {
+            JOptionPane.showMessageDialog(frame, "Could not parse selected block index.");
+            return;
+        }
+        String numStr = item.substring(hashIndex + 1, pipeIndex).trim();
+        int blockNumber;
+        try { blockNumber = Integer.parseInt(numStr); } catch (Exception ex) { JOptionPane.showMessageDialog(frame, "Invalid block selection."); return; }
+
+        List<Block> blocks = blockchain.getBlocks();
+        if (blockNumber < 0 || blockNumber >= blocks.size()) {
+            JOptionPane.showMessageDialog(frame, "Block out of range.");
+            return;
+        }
+
+        String currentText = textArea1.getText();
+        Document suspect = new Document("Doc1", System.getProperty("user.name"), java.time.LocalDate.now().toString(), currentText);
+        Document original = blocks.get(blockNumber).getDocument();
+        String algorithm = (String) algorithmBox.getSelectedItem();
+        double score = PlagiarismChecker.computeSimilarity(suspect, original, algorithm);
+        String verdict = PlagiarismChecker.verdictFor(score);
+        resultLabel.setText(String.format("Selected Block #%d | %.1f%% - %s | %s", blockNumber, score * 100.0, verdict, original.getSourceUrl()));
     }
 
     public void displayForm() {
