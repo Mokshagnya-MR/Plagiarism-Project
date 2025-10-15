@@ -1,6 +1,6 @@
 # Plagiarism Detection System (Java + Swing + Blockchain)
 
-A desktop Swing app that preprocesses documents, computes similarity (Cosine/Jaccard), and writes tamper-evident results to a simple blockchain stored on disk.
+A desktop Swing app that preprocesses documents, computes similarity (Cosine/Jaccard), auto-discovers the likely original source on the web, and writes tamper-evident results to a simple blockchain stored on disk. The blockchain now stores the original source text (and URL when available), not the submission.
 
 ## Requirements
 - Java 11+ (tested on Java 21)
@@ -19,7 +19,7 @@ jar --create --file out_jar/plagiarism-app.jar --main-class com.example.plagiari
 java -jar out_jar/plagiarism-app.jar
 ```
 
-If running on a headless server (no GUI), the app will automatically fall back to a console demo that prints a sample similarity and writes the blockchain file to `~/plagiarism_chain.txt`.
+If running on a headless server (no GUI), the app will automatically fall back to a console demo that best‑effort auto-discovers a source for a sample text and writes the blockchain file to `~/plagiarism_chain.txt`.
 
 ## Features
 - Preprocessing: lowercase, remove punctuation/numbers, stopword removal, deduplicate tokens
@@ -27,6 +27,8 @@ If running on a headless server (no GUI), the app will automatically fall back t
 - Verdicts: Safe (<30%), Moderate (30–70%), High (>70%)
 - Blockchain: each check adds a block with document metadata and score; supports save/load and validation
 - Mock external API: optional pseudo-random score for a document
+- Auto Source Discovery: searches the web using distinctive queries from the submission, fetches candidate pages, compares similarity, and selects the best match. If discovery fails, the app will ask for a source file.
+- Source Storage: the original source text and its URL are saved in the blockchain; you can reuse the last saved source.
 
 ## Structure
 - `com.example.plagiarism.Document` – document entity

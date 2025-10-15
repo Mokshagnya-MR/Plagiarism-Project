@@ -5,11 +5,23 @@ import java.time.LocalDate;
 
 public class ConsoleMain {
     public static void main(String[] args) {
-        String text1 = "AI is transforming education";
-        String text2 = "AI helps improve modern learning";
+        String text1 = "AI is transforming education by enabling personalized learning at scale.";
+        String text2 = "";
 
         Document doc1 = new Document("Doc1", System.getProperty("user.name"), LocalDate.now().toString(), text1);
-        Document doc2 = new Document("Doc2", System.getProperty("user.name"), LocalDate.now().toString(), text2);
+        // Try to auto-discover original source for doc1
+        SourceDiscoveryService discovery = new SourceDiscoveryService();
+        SourceDiscoveryService.DiscoveredSource found = discovery.discoverOriginalSource(text1).orElse(null);
+        String sourceUrl = "";
+        if (found != null) {
+            text2 = found.text();
+            sourceUrl = found.url();
+            System.out.println("Auto-discovered source: " + sourceUrl);
+        } else {
+            System.out.println("Could not auto-discover a source. Using a sample comparator text.");
+            text2 = "AI enables personalized learning by adapting educational content.";
+        }
+        Document doc2 = new Document("OriginalSource", "web", LocalDate.now().toString(), text2, sourceUrl);
 
         double cosScore = PlagiarismChecker.computeSimilarity(doc1, doc2, "Cosine");
         double jacScore = PlagiarismChecker.computeSimilarity(doc1, doc2, "Jaccard");
@@ -25,7 +37,7 @@ public class ConsoleMain {
         System.out.printf("→ Verdict: %s%n", jacVerdict);
 
         Blockchain blockchain = new Blockchain();
-        Block block = blockchain.addBlock(doc1);
+        Block block = blockchain.addBlock(doc2);
         System.out.println("→ Blockchain Entry Created [Block #" + block.getIndex() + "]");
 
         try {

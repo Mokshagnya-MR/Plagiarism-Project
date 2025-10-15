@@ -18,6 +18,7 @@ public class SwingApp {
     private final JTextArea textArea2;
     private final JComboBox<String> algorithmBox;
     private final JLabel resultLabel;
+    private final JLabel sourceUrlLabel;
     private final DefaultListModel<String> historyModel;
     private final Blockchain blockchain;
     private final File chainFile;
@@ -40,17 +41,22 @@ public class SwingApp {
         algorithmBox = new JComboBox<>(new String[]{"Cosine", "Jaccard"});
         JButton checkButton = new JButton("Check Plagiarism");
         JButton apiButton = new JButton("Use Mock API for Doc1");
+        JButton autoButton = new JButton("Auto Find Source + Check");
+        JButton useLastSourceButton = new JButton("Use Last Saved Source");
         JButton saveButton = new JButton("Save Chain");
         JButton loadButton = new JButton("Load Chain");
         controlPanel.add(new JLabel("Algorithm:"));
         controlPanel.add(algorithmBox);
         controlPanel.add(checkButton);
         controlPanel.add(apiButton);
+        controlPanel.add(autoButton);
+        controlPanel.add(useLastSourceButton);
         controlPanel.add(saveButton);
         controlPanel.add(loadButton);
 
         resultLabel = new JLabel("Result: ");
         resultLabel.setFont(resultLabel.getFont().deriveFont(Font.BOLD, 14f));
+        sourceUrlLabel = new JLabel("Source: -");
 
         historyModel = new DefaultListModel<>();
         JList<String> historyList = new JList<>(historyModel);
@@ -59,7 +65,10 @@ public class SwingApp {
 
         root.add(inputPanel, BorderLayout.CENTER);
         root.add(controlPanel, BorderLayout.NORTH);
-        root.add(resultLabel, BorderLayout.SOUTH);
+        JPanel southPanel = new JPanel(new GridLayout(2, 1));
+        southPanel.add(resultLabel);
+        southPanel.add(sourceUrlLabel);
+        root.add(southPanel, BorderLayout.SOUTH);
         root.add(historyScroll, BorderLayout.EAST);
 
         frame.setContentPane(root);
@@ -69,6 +78,8 @@ public class SwingApp {
 
         checkButton.addActionListener(this::onCheck);
         apiButton.addActionListener(this::onApiDoc1);
+        autoButton.addActionListener(this::onAutoFindSource);
+        useLastSourceButton.addActionListener(e -> onUseLastSource());
         saveButton.addActionListener(e -> onSave());
         loadButton.addActionListener(e -> onLoad());
     }
@@ -119,9 +130,85 @@ public class SwingApp {
         double percent = result.score() * 100.0;
         resultLabel.setText(String.format("Result: %.1f%% - %s", percent, result.verdict()));
 
-        // Record on blockchain
-        Block newBlock = blockchain.addBlock(doc1); // store doc1 metadata and score
+        // Record original source instead when provided in Doc2
+        Block newBlock = blockchain.addBlock(doc2);
         historyModel.addElement(String.format("Block #%d | %.1f%% | %s", newBlock.getIndex(), percent, result.verdict()));
+    }
+
+    private void onAutoFindSource(ActionEvent e) {
+        String submission = textArea1.getText();
+        if (submission == null || submission.isBlank()) {
+            JOptionPane.showMessageDialog(frame, "Please provide the submission text in Document 1.");
+            return;
+        }
+        resultLabel.setText("Result: Searching web for original source...");
+        sourceUrlLabel.setText("Source: -");
+        SourceDiscoveryService discovery = new SourceDiscoveryService();
+        SourceDiscoveryService.DiscoveredSource found = discovery.discoverOriginalSource(submission).orElse(null);
+
+        String originalText;
+        String sourceUrl = "";
+        if (found != null) {
+            originalText = found.text();
+            sourceUrl = found.url();
+        } else {
+            int choice = JOptionPane.showConfirmDialog(frame,
+                    "Could not auto-find the original source online. Do you want to provide a source file?",
+                    "Provide Source",
+                    JOptionPane.YES_NO_OPTION);
+            if (choice != JOptionPane.YES_OPTION) {
+                resultLabel.setText("Result: No source provided.");
+                return;
+            }
+            JFileChooser chooser = new JFileChooser();
+            chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Text Files", "txt", "md"));
+            int res = chooser.showOpenDialog(frame);
+            if (res != JFileChooser.APPROVE_OPTION) {
+                resultLabel.setText("Result: No source provided.");
+                return;
+            }
+            File file = chooser.getSelectedFile();
+            try {
+                originalText = java.nio.file.Files.readString(file.toPath());
+                sourceUrl = file.getAbsolutePath();
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(frame, "Failed to read file: " + ex.getMessage());
+                return;
+            }
+        }
+
+        textArea2.setText(originalText);
+        Document docSubmission = new Document("Submission", System.getProperty("user.name"), LocalDate.now().toString(), submission);
+        Document docOriginal = new Document("OriginalSource", "web", LocalDate.now().toString(), originalText, sourceUrl);
+        String algorithm = (String) algorithmBox.getSelectedItem();
+        PlagiarismChecker.Result result = PlagiarismChecker.checkPlagiarism(docSubmission, docOriginal, algorithm);
+        double percent = result.score() * 100.0;
+        resultLabel.setText(String.format("Result: %.1f%% - %s", percent, result.verdict()));
+        sourceUrlLabel.setText("Source: " + (sourceUrl == null || sourceUrl.isBlank() ? "(local file)" : sourceUrl));
+
+        // Save the original source in the blockchain
+        Block newBlock = blockchain.addBlock(docOriginal);
+        historyModel.addElement(String.format("Block #%d | %.1f%% | %s | Saved original", newBlock.getIndex(), percent, result.verdict()));
+    }
+
+    private void onUseLastSource() {
+        List<Block> blocks = blockchain.getBlocks();
+        if (blocks.size() <= 1) { // only genesis
+            JOptionPane.showMessageDialog(frame, "No saved source in blockchain yet.");
+            return;
+        }
+        Block last = blocks.get(blocks.size() - 1);
+        Document d = last.getDocument();
+        if (d.getText() == null || d.getText().isBlank()) {
+            JOptionPane.showMessageDialog(frame, "Last block has no source text.");
+            return;
+        }
+        textArea2.setText(d.getText());
+        if (d.getSourceUrl() != null && !d.getSourceUrl().isBlank()) {
+            sourceUrlLabel.setText("Source: " + d.getSourceUrl());
+        } else {
+            sourceUrlLabel.setText("Source: (from blockchain)");
+        }
     }
 
     private void onSave() {

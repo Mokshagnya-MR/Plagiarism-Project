@@ -7,13 +7,19 @@ public class Document {
     private final String author;
     private final String submissionDate; // ISO-8601 date string
     private final String text;
+    private final String sourceUrl; // optional: where the original was found
     private double plagiarismScore; // 0.0 - 1.0
 
     public Document(String title, String author, String submissionDate, String text) {
+        this(title, author, submissionDate, text, "");
+    }
+
+    public Document(String title, String author, String submissionDate, String text, String sourceUrl) {
         this.title = title == null ? "" : title;
         this.author = author == null ? "" : author;
         this.submissionDate = submissionDate == null ? "" : submissionDate;
         this.text = text == null ? "" : text;
+        this.sourceUrl = sourceUrl == null ? "" : sourceUrl;
         this.plagiarismScore = 0.0;
     }
 
@@ -42,6 +48,10 @@ public class Document {
 
     public String getText() {
         return text;
+    }
+
+    public String getSourceUrl() {
+        return sourceUrl;
     }
 
     public double getPlagiarismScore() {

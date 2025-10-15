@@ -8,6 +8,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Base64;
+import java.nio.charset.StandardCharsets;
 
 public class StorageManager {
 
@@ -15,6 +17,9 @@ public class StorageManager {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
             for (Block block : blockchain.getBlocks()) {
                 Document d = block.getDocument();
+                String textBase64 = Base64.getEncoder().encodeToString(
+                        (d.getText() == null ? "" : d.getText()).getBytes(StandardCharsets.UTF_8)
+                );
                 String line = String.join("|",
                         Integer.toString(block.getIndex()),
                         escape(block.getTimestamp()),
@@ -23,7 +28,9 @@ public class StorageManager {
                         escape(d.getTitle()),
                         escape(d.getAuthor()),
                         escape(d.getSubmissionDate()),
-                        escape(Double.toString(d.getPlagiarismScore()))
+                        escape(Double.toString(d.getPlagiarismScore())),
+                        escape(textBase64),
+                        escape(d.getSourceUrl())
                 );
                 writer.write(line);
                 writer.newLine();
@@ -46,7 +53,21 @@ public class StorageManager {
                 String author = unescape(parts[5]);
                 String date = unescape(parts[6]);
                 double score = Double.parseDouble(unescape(parts[7]));
-                Document doc = new Document(title, author, date, "");
+                String textDecoded = "";
+                String sourceUrl = "";
+                if (parts.length >= 9) {
+                    try {
+                        String b64 = unescape(parts[8]);
+                        byte[] bytes = b64.isEmpty() ? new byte[0] : Base64.getDecoder().decode(b64);
+                        textDecoded = new String(bytes, StandardCharsets.UTF_8);
+                    } catch (IllegalArgumentException e) {
+                        textDecoded = ""; // corrupt or old entry, ignore text
+                    }
+                }
+                if (parts.length >= 10) {
+                    sourceUrl = unescape(parts[9]);
+                }
+                Document doc = new Document(title, author, date, textDecoded, sourceUrl);
                 doc.setPlagiarismScore(score);
                 Block block = new Block(index, timestamp, doc, previousHash, hash);
                 loaded.add(block);
