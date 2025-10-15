@@ -30,7 +30,7 @@ import java.util.regex.Pattern;
 public class SourceFinder {
     private static final double MIN_ACCEPTABLE_SIMILARITY = 0.20; // 20% to be more tolerant
     private static final int MAX_SEARCH_TOKENS = 8;
-    private static final int MAX_CANDIDATE_LINKS = 5;
+    private static final int MAX_CANDIDATE_LINKS = 12;
 
     private final HttpClient httpClient;
 
