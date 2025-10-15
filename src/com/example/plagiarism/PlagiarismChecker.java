@@ -13,7 +13,16 @@ public class PlagiarismChecker {
         List<String> tokensA = TextPreprocessor.preprocessToTokens(a.extractText());
         List<String> tokensB = TextPreprocessor.preprocessToTokens(b.extractText());
         if ("Jaccard".equalsIgnoreCase(algorithmName)) {
-            return computeJaccard(tokensA, tokensB);
+            return computeJaccard(new HashSet<>(tokensA), new HashSet<>(tokensB));
+        } else if ("ShingleJaccard".equalsIgnoreCase(algorithmName)) {
+            List<String> wordsA = TextPreprocessor.preprocessToWordsPreservingOrder(a.extractText());
+            List<String> wordsB = TextPreprocessor.preprocessToWordsPreservingOrder(b.extractText());
+            return computeJaccardShingles(wordsA, wordsB, 3);
+        } else if ("Ensemble".equalsIgnoreCase(algorithmName)) {
+            double c = computeCosine(tokensA, tokensB);
+            double j = computeJaccard(new HashSet<>(tokensA), new HashSet<>(tokensB));
+            double s = computeJaccardShingles(tokensA, tokensB, 3);
+            return (c + j + s) / 3.0;
         } else {
             return computeCosine(tokensA, tokensB);
         }
@@ -91,9 +100,7 @@ public class PlagiarismChecker {
         return dot / (Math.sqrt(normA) * Math.sqrt(normB));
     }
 
-    private static double computeJaccard(List<String> tokensA, List<String> tokensB) {
-        Set<String> setA = new HashSet<>(tokensA);
-        Set<String> setB = new HashSet<>(tokensB);
+    private static double computeJaccard(Set<String> setA, Set<String> setB) {
         if (setA.isEmpty() && setB.isEmpty()) return 0.0;
         Set<String> intersection = new HashSet<>(setA);
         intersection.retainAll(setB);
@@ -101,6 +108,12 @@ public class PlagiarismChecker {
         union.addAll(setB);
         if (union.isEmpty()) return 0.0;
         return (double) intersection.size() / (double) union.size();
+    }
+
+    private static double computeJaccardShingles(List<String> wordsA, List<String> wordsB, int n) {
+        Set<String> sA = TextPreprocessor.generateWordShingles(wordsA, n);
+        Set<String> sB = TextPreprocessor.generateWordShingles(wordsB, n);
+        return computeJaccard(sA, sB);
     }
 
     private static Map<String, Integer> buildFrequencyMap(List<String> tokens) {

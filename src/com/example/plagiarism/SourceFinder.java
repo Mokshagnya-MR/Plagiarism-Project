@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
  * - Returns Document of the original source when found
  */
 public class SourceFinder {
-    private static final double MIN_ACCEPTABLE_SIMILARITY = 0.30; // 30%
+    private static final double MIN_ACCEPTABLE_SIMILARITY = 0.20; // 20% to be more tolerant
     private static final int MAX_SEARCH_TOKENS = 8;
     private static final int MAX_CANDIDATE_LINKS = 5;
 
@@ -51,9 +51,15 @@ public class SourceFinder {
         Optional<Document> byEmbedded = pickBestCandidate(embeddedUrls, suspect, algorithmName);
         if (byEmbedded.isPresent()) return byEmbedded;
 
-        // 2) Web search using top keywords
+        // 2) Web search using top keywords and exact phrase; boost nasa.gov
         String query = buildKeywordQuery(suspectText);
-        List<String> linksFromSearch = searchDuckDuckGoLinks(query);
+        List<String> linksFromSearch = new ArrayList<>();
+        String phrase = pickRepresentativePhrase(suspectText);
+        if (!phrase.isBlank()) {
+            linksFromSearch.addAll(searchDuckDuckGoLinks('"' + phrase + '"'));
+        }
+        linksFromSearch.addAll(searchDuckDuckGoLinks(query + " site:nasa.gov"));
+        linksFromSearch.addAll(searchDuckDuckGoLinks(query));
         Optional<Document> bySearch = pickBestCandidate(linksFromSearch, suspect, algorithmName);
         if (bySearch.isPresent()) return bySearch;
 
@@ -114,12 +120,34 @@ public class SourceFinder {
         Matcher m = Pattern.compile("href=\\\"(https?://[^\\\"]+)\\\"").matcher(html);
         while (m.find()) {
             String href = m.group(1);
-            // Skip DuckDuckGo redirector links
-            if (href.contains("duckduckgo.com/y.js") || href.contains("duckduckgo.com/l/")) continue;
+            // Decode DDG redirector links
+            if (href.contains("duckduckgo.com/l/?uddg=")) {
+                href = decodeDdgRedirect(href);
+            }
             links.add(href);
             if (links.size() >= MAX_CANDIDATE_LINKS) break;
         }
         return links;
+    }
+
+    private static String pickRepresentativePhrase(String text) {
+        List<String> words = TextPreprocessor.preprocessToWordsPreservingOrder(text);
+        if (words.isEmpty()) return "";
+        if (words.size() <= 8) return String.join(" ", words);
+        int start = Math.max(0, words.size() / 3 - 3);
+        int end = Math.min(words.size(), start + 8);
+        return String.join(" ", words.subList(start, end));
+    }
+
+    private static String decodeDdgRedirect(String href) {
+        try {
+            int i = href.indexOf("uddg=");
+            if (i >= 0) {
+                String enc = href.substring(i + 5);
+                return java.net.URLDecoder.decode(enc, StandardCharsets.UTF_8);
+            }
+        } catch (Exception ignored) {}
+        return href;
     }
 
     private static List<String> extractUrls(String text) {
@@ -153,7 +181,11 @@ public class SourceFinder {
         try {
             String html = fetch(URI.create(url));
             if (html == null) return null;
-            return htmlToPlainText(html);
+            String text = htmlToPlainText(html);
+            if (text != null && text.length() >= 200) return text;
+            String reader = fetch(URI.create("https://r.jina.ai/http://" + url.replaceFirst("^https?://", "")));
+            if (reader != null && !reader.isBlank()) return reader.trim();
+            return text;
         } catch (Exception e) {
             return null;
         }

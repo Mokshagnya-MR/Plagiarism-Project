@@ -37,7 +37,7 @@ public class SwingApp {
         inputPanel.add(wrapWithToolbar(textArea2, "Document 2"));
 
         JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        algorithmBox = new JComboBox<>(new String[]{"Cosine", "Jaccard"});
+        algorithmBox = new JComboBox<>(new String[]{"Ensemble", "Cosine", "Jaccard", "ShingleJaccard"});
         JButton checkButton = new JButton("Check Plagiarism");
         JButton sourceFindButton = new JButton("Auto-Find Source (Doc1)");
         JButton apiButton = new JButton("Use Mock API for Doc1");

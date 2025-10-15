@@ -28,7 +28,7 @@ public class ConsoleMain {
 
         // Try auto-finding original for doc1 and store ORIGINAL in blockchain if found
         SourceFinder finder = new SourceFinder();
-        String algorithm = "Cosine";
+        String algorithm = "Ensemble";
         var originalOpt = finder.autoFindOriginal(doc1, algorithm);
         if (originalOpt.isPresent()) {
             Document original = originalOpt.get();
