@@ -161,11 +161,31 @@ public class SwingApp {
         PlagiarismChecker.Result result = PlagiarismChecker.checkPlagiarism(doc1, doc2, algorithm);
 
         double percent = result.score() * 100.0;
-        resultLabel.setText(String.format("Result: %.1f%% - %s", percent, result.verdict()));
+        // Auto-find original for doc1 using SourceFinder
+        SourceFinder finder = new SourceFinder();
+        var found1 = finder.autoFindOriginal(doc1, algorithm);
+        String src1 = found1.map(Document::getSourceUrl).orElse("");
+        if (found1.isPresent()) {
+            // Store ORIGINAL for doc1
+            Block b1 = blockchain.addBlock(found1.get());
+            historyModel.addElement(String.format("Block #%d | Doc1 src | %s", b1.getIndex(), src1));
+        } else {
+            // Store suspect metadata (no source)
+            Block b1 = blockchain.addBlock(new Document(doc1.getTitle(), doc1.getAuthor(), doc1.getSubmissionDate(), doc1.getText(), ""));
+            historyModel.addElement(String.format("Block #%d | Doc1 src | %s", b1.getIndex(), "<none>"));
+        }
 
-        // Record suspect doc result (metadata only) but do NOT store as original. Users can use Auto-Find Source to store original.
-        Block newBlock = blockchain.addBlock(new Document(doc1.getTitle(), doc1.getAuthor(), doc1.getSubmissionDate(), doc1.getText(), ""));
-        historyModel.addElement(String.format("Block #%d | %.1f%% | %s | src=%s", newBlock.getIndex(), percent, result.verdict(), ""));
+        // Optionally also attempt for doc2 if provided
+        if (text2 != null && !text2.isBlank()) {
+            var found2 = finder.autoFindOriginal(doc2, algorithm);
+            String src2 = found2.map(Document::getSourceUrl).orElse("");
+            if (found2.isPresent()) {
+                Block b2 = blockchain.addBlock(found2.get());
+                historyModel.addElement(String.format("Block #%d | Doc2 src | %s", b2.getIndex(), src2));
+            }
+        }
+
+        resultLabel.setText(String.format("Result: %.1f%% - %s | Doc1 src: %s", percent, result.verdict(), src1.isBlank()?"<none>":src1));
     }
 
     private void onSave() {
