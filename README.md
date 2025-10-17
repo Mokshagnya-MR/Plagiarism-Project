@@ -36,6 +36,7 @@ If running on a headless server (no GUI), the app will automatically fall back t
 - `com.example.plagiarism.Block`, `Blockchain` – minimal blockchain
 - `com.example.plagiarism.StorageManager` – save/load chain to text file
 - `com.example.plagiarism.PlagiarismAPIClient` – mock API client
+- `com.example.plagiarism.WebSearchClient` – exact-phrase web search (DDG/Bing HTML)
 - `com.example.plagiarism.SwingApp` – GUI
 
 ## Notes
@@ -47,6 +48,10 @@ If running on a headless server (no GUI), the app will automatically fall back t
 - Add n-gram/token weighting
 - Integrate real plagiarism APIs
 - Improve blockchain persistence and document content hashing
+ - Add configurable search providers/APIs (Google Custom Search, SerpAPI)
+
+## Exact-phrase web search
+The UI offers a "Find Sources (Exact Doc1)" button that searches the web for pages containing exact phrases quoted from Document 1. It currently uses DuckDuckGo (HTML) with a Bing HTML fallback. Results open in your default browser.
 
 ## Architecture Diagrams
 
