@@ -40,6 +40,7 @@ public class SwingApp {
         algorithmBox = new JComboBox<>(new String[]{"Cosine", "Jaccard"});
         JButton checkButton = new JButton("Check Plagiarism");
         JButton apiButton = new JButton("Use Mock API for Doc1");
+        JButton sourceButton = new JButton("Find Sources (Exact)");
         JButton saveButton = new JButton("Save Chain");
         JButton loadButton = new JButton("Load Chain");
         controlPanel.add(new JLabel("Algorithm:"));
@@ -48,6 +49,7 @@ public class SwingApp {
         controlPanel.add(apiButton);
         controlPanel.add(saveButton);
         controlPanel.add(loadButton);
+        controlPanel.add(sourceButton);
 
         resultLabel = new JLabel("Result: ");
         resultLabel.setFont(resultLabel.getFont().deriveFont(Font.BOLD, 14f));
@@ -71,6 +73,7 @@ public class SwingApp {
         apiButton.addActionListener(this::onApiDoc1);
         saveButton.addActionListener(e -> onSave());
         loadButton.addActionListener(e -> onLoad());
+        sourceButton.addActionListener(this::onFindSources);
     }
 
     private JPanel wrapWithToolbar(JTextArea area, String title) {
@@ -105,6 +108,36 @@ public class SwingApp {
         double score = api.checkPlagiarismAPI(text1);
         String verdict = PlagiarismChecker.verdictFor(score);
         resultLabel.setText(String.format("Result (API Doc1): %.1f%% - %s", score * 100.0, verdict));
+    }
+
+    private void onFindSources(ActionEvent e) {
+        String text1 = textArea1.getText();
+        if (text1 == null || text1.isBlank()) {
+            JOptionPane.showMessageDialog(frame, "Document 1 is empty.");
+            return;
+        }
+        try {
+            SourceFinder finder = new DuckDuckGoSourceFinder();
+            List<WebSource> sources = finder.findExactWordMatches(text1, 5);
+            if (sources.isEmpty()) {
+                JOptionPane.showMessageDialog(frame, "No sources found with exact phrase match.");
+                return;
+            }
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < sources.size(); i++) {
+                WebSource s = sources.get(i);
+                sb.append("#").append(i + 1).append(": ").append(s.toString()).append("\n\n");
+            }
+            JTextArea area = new JTextArea(sb.toString());
+            area.setEditable(false);
+            area.setLineWrap(true);
+            area.setWrapStyleWord(true);
+            JScrollPane pane = new JScrollPane(area);
+            pane.setPreferredSize(new Dimension(700, 400));
+            JOptionPane.showMessageDialog(frame, pane, "Exact Phrase Sources", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(frame, "Failed to search sources: " + ex.getMessage());
+        }
     }
 
     private void onCheck(ActionEvent e) {
