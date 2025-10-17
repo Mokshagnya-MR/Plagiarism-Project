@@ -5,6 +5,9 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.net.URI;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -40,12 +43,14 @@ public class SwingApp {
         algorithmBox = new JComboBox<>(new String[]{"Cosine", "Jaccard"});
         JButton checkButton = new JButton("Check Plagiarism");
         JButton apiButton = new JButton("Use Mock API for Doc1");
+        JButton findButton = new JButton("Find Sources (Exact Doc1)");
         JButton saveButton = new JButton("Save Chain");
         JButton loadButton = new JButton("Load Chain");
         controlPanel.add(new JLabel("Algorithm:"));
         controlPanel.add(algorithmBox);
         controlPanel.add(checkButton);
         controlPanel.add(apiButton);
+        controlPanel.add(findButton);
         controlPanel.add(saveButton);
         controlPanel.add(loadButton);
 
@@ -71,6 +76,7 @@ public class SwingApp {
         apiButton.addActionListener(this::onApiDoc1);
         saveButton.addActionListener(e -> onSave());
         loadButton.addActionListener(e -> onLoad());
+        findButton.addActionListener(this::onFindSources);
     }
 
     private JPanel wrapWithToolbar(JTextArea area, String title) {
@@ -105,6 +111,82 @@ public class SwingApp {
         double score = api.checkPlagiarismAPI(text1);
         String verdict = PlagiarismChecker.verdictFor(score);
         resultLabel.setText(String.format("Result (API Doc1): %.1f%% - %s", score * 100.0, verdict));
+    }
+
+    private void onFindSources(ActionEvent e) {
+        String text1 = textArea1.getText();
+        if (text1 == null || text1.isBlank()) {
+            JOptionPane.showMessageDialog(frame, "Document 1 is empty.");
+            return;
+        }
+        resultLabel.setText("Searching web for exact Doc1 phrases...");
+
+        // Run web search in background to avoid freezing UI
+        new Thread(() -> {
+            try {
+                WebSearchClient client = new WebSearchClient();
+                java.util.List<WebSearchClient.SearchResult> results = client.findExactMatches(text1, 10);
+                SwingUtilities.invokeLater(() -> showSearchResults(results));
+            } catch (Exception ex) {
+                SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(frame, "Search failed: " + ex.getMessage()));
+            }
+        }, "web-search-thread").start();
+    }
+
+    private void showSearchResults(java.util.List<WebSearchClient.SearchResult> results) {
+        if (results == null || results.isEmpty()) {
+            resultLabel.setText("No exact matches found.");
+            JOptionPane.showMessageDialog(frame, "No exact matches found.");
+            return;
+        }
+
+        JDialog dialog = new JDialog(frame, "Exact Matches for Doc1", true);
+        DefaultListModel<WebSearchClient.SearchResult> model = new DefaultListModel<>();
+        for (WebSearchClient.SearchResult r : results) model.addElement(r);
+
+        JList<WebSearchClient.SearchResult> list = new JList<>(model);
+        list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        list.setCellRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                Component c = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof WebSearchClient.SearchResult) {
+                    WebSearchClient.SearchResult r = (WebSearchClient.SearchResult) value;
+                    setText(r.getTitle() + " — " + r.getUrl());
+                }
+                return c;
+            }
+        });
+        list.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    int idx = list.locationToIndex(e.getPoint());
+                    if (idx >= 0) {
+                        WebSearchClient.SearchResult r = model.get(idx);
+                        try {
+                            if (Desktop.isDesktopSupported()) {
+                                Desktop.getDesktop().browse(new URI(r.getUrl()));
+                            }
+                        } catch (Exception ex) {
+                            JOptionPane.showMessageDialog(frame, "Failed to open URL: " + ex.getMessage());
+                        }
+                    }
+                }
+            }
+        });
+
+        dialog.setLayout(new BorderLayout());
+        dialog.add(new JScrollPane(list), BorderLayout.CENTER);
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton close = new JButton("Close");
+        close.addActionListener(ev -> dialog.dispose());
+        footer.add(close);
+        dialog.add(footer, BorderLayout.SOUTH);
+        dialog.setSize(900, 450);
+        dialog.setLocationRelativeTo(frame);
+        dialog.setVisible(true);
+        resultLabel.setText("Found " + results.size() + " result(s).");
     }
 
     private void onCheck(ActionEvent e) {
