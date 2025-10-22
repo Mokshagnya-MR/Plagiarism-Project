@@ -1,5 +1,9 @@
 package com.example.plagiarism;
 
+import com.example.plagiarism.similarity.LevenshteinSimilarity;
+import com.example.plagiarism.similarity.NGramSimilarity;
+import com.example.plagiarism.config.AppConfig;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -12,10 +16,17 @@ public class PlagiarismChecker {
     public static double computeSimilarity(Document a, Document b, String algorithmName) {
         List<String> tokensA = TextPreprocessor.preprocessToTokens(a.extractText());
         List<String> tokensB = TextPreprocessor.preprocessToTokens(b.extractText());
-        if ("Jaccard".equalsIgnoreCase(algorithmName)) {
-            return computeJaccard(tokensA, tokensB);
-        } else {
-            return computeCosine(tokensA, tokensB);
+
+        switch (algorithmName.toLowerCase()) {
+            case "jaccard":
+                return computeJaccard(tokensA, tokensB);
+            case "levenshtein":
+                return LevenshteinSimilarity.compute(tokensA, tokensB);
+            case "ngram":
+                return NGramSimilarity.compute(tokensA, tokensB, 3);
+            case "cosine":
+            default:
+                return computeCosine(tokensA, tokensB);
         }
     }
 
@@ -41,9 +52,13 @@ public class PlagiarismChecker {
     }
 
     public static String verdictFor(double score) {
+        AppConfig config = AppConfig.getInstance();
+        double safeThreshold = config.getDouble("similarity.threshold.safe", 30.0);
+        double highThreshold = config.getDouble("similarity.threshold.high", 70.0);
+
         double percent = score * 100.0;
-        if (percent < 30.0) return "Safe";
-        if (percent <= 70.0) return "Moderate";
+        if (percent < safeThreshold) return "Safe";
+        if (percent <= highThreshold) return "Moderate";
         return "High";
     }
 

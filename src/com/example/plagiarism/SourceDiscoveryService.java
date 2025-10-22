@@ -1,5 +1,8 @@
 package com.example.plagiarism;
 
+import com.example.plagiarism.ai.AISourceDiscoveryService;
+import com.example.plagiarism.config.AppConfig;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -44,17 +47,28 @@ public class SourceDiscoveryService {
     }
 
     private final HttpClient httpClient;
+    private final AISourceDiscoveryService aiService;
+    private final AppConfig config;
 
     public SourceDiscoveryService() {
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .followRedirects(HttpClient.Redirect.NORMAL)
                 .build();
+        this.aiService = new AISourceDiscoveryService();
+        this.config = AppConfig.getInstance();
     }
 
     public Optional<DiscoveredSource> discoverOriginalSource(String submissionText) {
         if (submissionText == null || submissionText.isBlank()) {
             return Optional.empty();
+        }
+
+        if (config.getBoolean("ai.enabled", true)) {
+            Optional<DiscoveredSource> aiResult = aiService.discoverWithAI(submissionText);
+            if (aiResult.isPresent()) {
+                System.out.println("Using AI-enhanced source discovery");
+            }
         }
         List<String> queries = buildQueries(submissionText);
         double bestScore = -1.0;
