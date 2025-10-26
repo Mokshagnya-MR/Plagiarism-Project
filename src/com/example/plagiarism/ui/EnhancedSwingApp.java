@@ -21,13 +21,13 @@ import java.util.List;
 
 public class EnhancedSwingApp {
     private final JFrame frame;
-    private final JTextArea textArea1;
-    private final JTextArea textArea2;
-    private final JComboBox<String> algorithmBox;
-    private final JLabel resultLabel;
-    private final JLabel sourceUrlLabel;
-    private final JProgressBar progressBar;
-    private final DefaultTableModel historyTableModel;
+    private JTextArea textArea1;
+    private JTextArea textArea2;
+    private JComboBox<String> algorithmBox;
+    private JLabel resultLabel;
+    private JLabel sourceUrlLabel;
+    private JProgressBar progressBar;
+    private DefaultTableModel historyTableModel;
     private final Blockchain blockchain;
     private final File chainFile;
     private final SupabaseClient supabaseClient;

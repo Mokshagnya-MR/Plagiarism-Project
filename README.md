@@ -20,24 +20,35 @@ A comprehensive desktop application built with Java Swing that provides advanced
 
 ## Quick Start
 
-### Compile and Run
+### Easy Build (Recommended)
 
 ```bash
-# Compile all sources
+# Simple one-command build
+./build.sh
+
+# Run Enhanced UI (Recommended)
+java -jar out_jar/plagiarism-app-enhanced.jar
+
+# Or run Original UI
+java -jar out_jar/plagiarism-app.jar
+
+# Console mode (for headless systems)
+java -cp out com.example.plagiarism.ConsoleMain
+```
+
+### Manual Build
+
+```bash
+# Step 1: Compile all sources
 find src -name "*.java" > sources.list
 javac -d out @sources.list
 
-# Package runnable JAR (Original UI)
+# Step 2: Package runnable JARs
 mkdir -p out_jar
 jar --create --file out_jar/plagiarism-app.jar --main-class com.example.plagiarism.SwingApp -C out .
-
-# Or package with Enhanced UI
 jar --create --file out_jar/plagiarism-app-enhanced.jar --main-class com.example.plagiarism.ui.EnhancedSwingApp -C out .
 
-# Run Original UI
-java -jar out_jar/plagiarism-app.jar
-
-# Run Enhanced UI (Recommended)
+# Step 3: Run
 java -jar out_jar/plagiarism-app-enhanced.jar
 ```
 
