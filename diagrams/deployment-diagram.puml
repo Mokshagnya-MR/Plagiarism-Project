@@ -1,0 +1,58 @@
+@startuml
+title Deployment Diagram
+
+node "User's Local Machine" {
+  node "Java Runtime Environment (JRE)" {
+    artifact "plagiarism-app-enhanced.jar" {
+      component [GUI (Swing)]
+      component [Console Interface]
+      component [Core Business Logic]
+      component [PlagiarismChecker]
+      component [Similarity Algorithms]
+      component [Blockchain]
+    }
+  }
+
+  folder "Local File System" {
+    file "plagiarism_chain.txt"
+    file "blockchain_export.json"
+    file "results_export.csv"
+    file "config.properties"
+  }
+
+  [Core Business Logic] --> [Local File System] : read/write
+}
+
+cloud "Cloud Services" {
+  database "Supabase\n(PostgreSQL)" {
+    storage "blockchain_data" as bcdata
+    storage "user_auth" as auth
+  }
+
+  cloud "Web Search APIs" {
+    component [Search Service]
+    component [Content Extraction]
+  }
+}
+
+[Core Business Logic] -down-> [Supabase\n(PostgreSQL)] : HTTPS\nREST API
+[Core Business Logic] -down-> [Web Search APIs] : HTTPS\nAPI Calls
+
+note right of [GUI (Swing)]
+  Desktop application
+  with rich UI
+end note
+
+note right of [Supabase\n(PostgreSQL)]
+  - Blockchain sync
+  - Real-time updates
+  - Authentication (optional)
+end note
+
+note right of [Web Search APIs]
+  - Source discovery
+  - Content fetching
+  - Text extraction
+end note
+
+@enduml

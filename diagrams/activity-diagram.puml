@@ -1,0 +1,109 @@
+@startuml
+title Plagiarism Detection Workflow - Activity Diagram
+
+start
+
+:Load Documents;
+note right
+  User uploads or pastes
+  document content
+end note
+
+:Select Algorithm;
+note right
+  Cosine, Jaccard,
+  Levenshtein, or N-Gram
+end note
+
+if (Source Type?) then (Manual)
+  if (Both documents provided?) then (Yes)
+    :Continue to processing;
+  else (No)
+    :Display error message;
+    stop
+  endif
+else (Auto)
+  :Search web for original source;
+
+  if (Source found?) then (Yes)
+    :Populate source document;
+  else (No)
+    :Prompt user for manual source;
+
+    if (User provides file?) then (Yes)
+      :Load source from file;
+    else (No)
+      :Cancel operation;
+      stop
+    endif
+  endif
+endif
+
+:Preprocess texts;
+note right
+  - Tokenization
+  - Normalization
+  - Stop word removal
+end note
+
+:Apply selected algorithm;
+
+partition "Algorithm Execution" {
+  if (Algorithm type?) then (Cosine)
+    :Calculate cosine similarity;
+  elseif (Jaccard)
+    :Calculate Jaccard index;
+  elseif (Levenshtein)
+    :Calculate Levenshtein distance;
+  else (N-Gram)
+    :Calculate N-Gram similarity;
+  endif
+}
+
+:Calculate similarity score;
+
+:Determine verdict;
+note right
+  Safe: < 40%
+  Moderate: 40-70%
+  Suspicious: > 70%
+end note
+
+:Create blockchain block;
+note right
+  - Generate hash
+  - Link to previous block
+  - Add document metadata
+end note
+
+fork
+  :Save to local file system;
+fork again
+  if (Supabase configured?) then (Yes)
+    :Sync to Supabase cloud;
+  else (No)
+    :Skip cloud sync;
+  endif
+end fork
+
+:Display results to user;
+note right
+  - Similarity score
+  - Verdict
+  - Source URL (if found)
+  - Block added to history
+end note
+
+if (Export requested?) then (Yes)
+  :Export results;
+  note right
+    JSON, CSV, or
+    detailed report
+  end note
+else (No)
+  :Skip export;
+endif
+
+stop
+
+@enduml

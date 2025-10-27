@@ -1,0 +1,71 @@
+@startuml
+title Component Diagram
+
+package "User Interface" {
+  component [EnhancedSwingApp] as UI
+  component [SettingsDialog] as Settings
+  component [ConsoleMain] as Console
+}
+
+package "Core Components" {
+  component [PlagiarismChecker] as Checker
+  component [TextPreprocessor] as Preprocessor
+
+  package "Similarity Algorithms" {
+    component [CosineSimilarity] as Cosine
+    component [JaccardIndex] as Jaccard
+    component [LevenshteinSimilarity] as Levenshtein
+    component [NGramSimilarity] as NGram
+  }
+
+  package "Source Discovery" {
+    component [SourceDiscoveryService] as Discovery
+    component [AISourceDiscoveryService] as AIDiscovery
+  }
+}
+
+package "Data Management" {
+  component [Blockchain] as BC
+  component [Block] as Block
+  component [Document] as Doc
+  component [AppConfig] as Config
+}
+
+package "Storage & Export" {
+  component [StorageManager] as Storage
+  component [SupabaseClient] as Supabase
+  component [ResultExporter] as Exporter
+}
+
+database "Local Files" as LocalFS
+cloud "Supabase Cloud" as Cloud
+cloud "Web APIs" as Web
+
+UI --> Checker
+UI --> Discovery
+UI --> BC
+UI --> Storage
+UI --> Supabase
+UI --> Exporter
+UI --> Config
+UI --> Settings
+
+Console --> Checker
+
+Checker --> Preprocessor
+Checker --> Cosine
+Checker --> Jaccard
+Checker --> Levenshtein
+Checker --> NGram
+Checker --> Doc
+
+Discovery --> Web
+AIDiscovery --|> Discovery
+
+BC --> Block
+Block --> Doc
+
+Storage --> LocalFS
+Supabase --> Cloud
+
+@enduml

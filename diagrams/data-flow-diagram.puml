@@ -1,0 +1,71 @@
+@startuml
+title Data Flow Diagram
+
+actor User
+
+rectangle "Input" {
+  (Input Text\nor Upload)
+}
+
+rectangle "Preprocessing" {
+  (Text Preprocessor)
+}
+
+rectangle "Analysis Selection" {
+  (Select Algorithm\n& Parameters)
+}
+
+rectangle "Source Handling" {
+  (Manual Compare)
+  (Auto Discover Source)
+}
+
+rectangle "Web Services" {
+  cloud "Web Search API"
+}
+
+rectangle "Similarity Processing" {
+  (Similarity\nCalculation)
+}
+
+rectangle "Results" {
+  (Score &\nVerdict)
+}
+
+rectangle "Storage" {
+  (Add to\nBlockchain)
+  database "Local Storage"
+  cloud "Supabase Cloud"
+}
+
+rectangle "Output" {
+  (Display\nResult)
+  (Export\nResults)
+}
+
+User --> (Input Text\nor Upload)
+(Input Text\nor Upload) --> (Text Preprocessor)
+(Text Preprocessor) --> (Select Algorithm\n& Parameters)
+
+(Select Algorithm\n& Parameters) --> (Manual Compare)
+(Select Algorithm\n& Parameters) --> (Auto Discover Source)
+
+(Auto Discover Source) --> "Web Search API"
+"Web Search API" --> (Auto Discover Source) : source text
+
+(Manual Compare) --> (Similarity\nCalculation)
+(Auto Discover Source) --> (Similarity\nCalculation)
+
+(Similarity\nCalculation) --> (Score &\nVerdict)
+
+(Score &\nVerdict) --> (Display\nResult)
+(Score &\nVerdict) --> (Add to\nBlockchain)
+
+(Add to\nBlockchain) --> "Local Storage"
+(Add to\nBlockchain) --> "Supabase Cloud"
+
+(Display\nResult) --> User
+(Display\nResult) --> (Export\nResults)
+(Export\nResults) --> User : JSON/CSV/Report
+
+@enduml

@@ -1,0 +1,187 @@
+@startuml
+title Plagiarism Detection System - Class Diagram
+
+class Document {
+  - title: String
+  - author: String
+  - date: String
+  - text: String
+  - sourceUrl: String
+  - plagiarismScore: double
+  + getTitle(): String
+  + getAuthor(): String
+  + getText(): String
+  + getSourceUrl(): String
+  + getPlagiarismScore(): double
+  + setPlagiarismScore(double): void
+}
+
+class Block {
+  - index: int
+  - timestamp: String
+  - document: Document
+  - previousHash: String
+  - hash: String
+  + getIndex(): int
+  + getTimestamp(): String
+  + getDocument(): Document
+  + getHash(): String
+  + getPreviousHash(): String
+  + calculateHash(): String
+}
+
+class Blockchain {
+  - blocks: List<Block>
+  + addBlock(Document): Block
+  + getBlocks(): List<Block>
+  + isChainValid(): boolean
+}
+
+interface SimilarityAlgorithm {
+  + calculate(String, String): double
+}
+
+class CosineSimilarity {
+  + calculate(String, String): double
+}
+
+class JaccardIndex {
+  + calculate(String, String): double
+}
+
+class LevenshteinSimilarity {
+  + calculate(String, String): double
+}
+
+class NGramSimilarity {
+  + calculate(String, String): double
+}
+
+class PlagiarismChecker {
+  + {static} checkPlagiarism(Document, Document, String): Result
+  + {static} pairwiseCheck(List<Document>, String): List<PairwiseResult>
+}
+
+class "PlagiarismChecker$Result" as Result {
+  + score: double
+  + verdict: String
+  + doc1: Document
+  + doc2: Document
+}
+
+class "PlagiarismChecker$PairwiseResult" as PairwiseResult {
+  + docA: Document
+  + docB: Document
+  + score: double
+  + verdict: String
+}
+
+class TextPreprocessor {
+  + {static} preprocess(String): String
+  + {static} tokenize(String): List<String>
+  + {static} removeStopWords(List<String>): List<String>
+}
+
+class SourceDiscoveryService {
+  + discoverOriginalSource(String): Optional<DiscoveredSource>
+}
+
+class "SourceDiscoveryService$DiscoveredSource" as DiscoveredSource {
+  + text: String
+  + url: String
+}
+
+class AISourceDiscoveryService {
+  + findSourceWithAI(String): Optional<DiscoveredSource>
+}
+
+class StorageManager {
+  + {static} saveChainToFile(Blockchain, File): void
+  + {static} loadChainFromFile(File): Blockchain
+}
+
+class SupabaseClient {
+  - supabaseUrl: String
+  - supabaseKey: String
+  + syncBlockchain(List<Block>): void
+  + isConfigured(): boolean
+}
+
+class "SupabaseClient$BlockchainEntry" as BlockchainEntry {
+  + block_index: int
+  + block_hash: String
+  + previous_hash: String
+  + timestamp: String
+  + document_data: String
+}
+
+class ResultExporter {
+  + {static} exportBlockchainToJSON(List<Block>, File): void
+  + {static} exportToCSV(List<Result>, File): void
+  + {static} generateReport(Result, File): void
+}
+
+class AppConfig {
+  - {static} instance: AppConfig
+  - properties: Properties
+  - AppConfig()
+  + {static} getInstance(): AppConfig
+  + getString(String, String): String
+  + getBoolean(String, boolean): boolean
+  + setProperty(String, String): void
+  + save(): void
+}
+
+class EnhancedSwingApp {
+  - frame: JFrame
+  - textArea1: JTextArea
+  - textArea2: JTextArea
+  - algorithmBox: JComboBox<String>
+  - resultLabel: JLabel
+  - blockchain: Blockchain
+  - supabaseClient: SupabaseClient
+  - config: AppConfig
+  + displayForm(): void
+  - onCheck(ActionEvent): void
+  - onAutoFindSource(ActionEvent): void
+  - onSave(): void
+  - onLoad(): void
+  - exportResults(String): void
+}
+
+class SettingsDialog {
+  - config: AppConfig
+  + SettingsDialog(JFrame, AppConfig)
+}
+
+class ConsoleMain {
+  + {static} main(String[]): void
+}
+
+Block "1" *-- "1" Document
+Blockchain "1" o-- "*" Block
+PlagiarismChecker ..> Result : creates
+PlagiarismChecker ..> PairwiseResult : creates
+PlagiarismChecker ..> SimilarityAlgorithm : uses
+PlagiarismChecker ..> TextPreprocessor : uses
+
+SimilarityAlgorithm <|.. CosineSimilarity
+SimilarityAlgorithm <|.. JaccardIndex
+SimilarityAlgorithm <|.. LevenshteinSimilarity
+SimilarityAlgorithm <|.. NGramSimilarity
+
+SourceDiscoveryService ..> DiscoveredSource : creates
+AISourceDiscoveryService --|> SourceDiscoveryService
+
+EnhancedSwingApp ..> Blockchain : uses
+EnhancedSwingApp ..> PlagiarismChecker : uses
+EnhancedSwingApp ..> SourceDiscoveryService : uses
+EnhancedSwingApp ..> SupabaseClient : uses
+EnhancedSwingApp ..> StorageManager : uses
+EnhancedSwingApp ..> ResultExporter : uses
+EnhancedSwingApp ..> AppConfig : uses
+EnhancedSwingApp ..> SettingsDialog : creates
+
+SupabaseClient ..> BlockchainEntry : uses
+
+@enduml

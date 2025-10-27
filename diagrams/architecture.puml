@@ -1,0 +1,69 @@
+@startuml
+title System Architecture - Layered Architecture
+
+package "Presentation Layer" {
+  [EnhancedSwingApp\n(GUI Interface)]
+  [ConsoleMain\n(CLI Interface)]
+}
+
+package "Business Logic Layer" {
+  [PlagiarismChecker]
+  [SourceDiscoveryService]
+  [TextPreprocessor]
+  [AISourceDiscoveryService]
+}
+
+package "Algorithm Layer" {
+  [CosineSimilarity]
+  [JaccardIndex]
+  [LevenshteinSimilarity]
+  [NGramSimilarity]
+}
+
+package "Data Layer" {
+  [Blockchain]
+  [Document]
+  [Block]
+}
+
+package "Persistence Layer" {
+  [StorageManager\n(Local Files)]
+  [SupabaseClient\n(Cloud Sync)]
+  [ResultExporter\n(JSON/CSV/Report)]
+  [AppConfig]
+}
+
+package "External Services" {
+  cloud "Web APIs\n(Source Discovery)" as WebAPI
+  database "Supabase Database\n(Blockchain Sync)" as SupabaseDB
+}
+
+[EnhancedSwingApp\n(GUI Interface)] --> [PlagiarismChecker]
+[ConsoleMain\n(CLI Interface)] --> [PlagiarismChecker]
+
+[PlagiarismChecker] --> [TextPreprocessor]
+[PlagiarismChecker] --> [CosineSimilarity]
+[PlagiarismChecker] --> [JaccardIndex]
+[PlagiarismChecker] --> [LevenshteinSimilarity]
+[PlagiarismChecker] --> [NGramSimilarity]
+
+[EnhancedSwingApp\n(GUI Interface)] --> [SourceDiscoveryService]
+[SourceDiscoveryService] --> [AISourceDiscoveryService]
+
+[CosineSimilarity] --> [Blockchain]
+[JaccardIndex] --> [Blockchain]
+[LevenshteinSimilarity] --> [Blockchain]
+[NGramSimilarity] --> [Blockchain]
+
+[Blockchain] --> [Block]
+[Block] --> [Document]
+
+[Blockchain] --> [StorageManager\n(Local Files)]
+[Blockchain] --> [SupabaseClient\n(Cloud Sync)]
+[EnhancedSwingApp\n(GUI Interface)] --> [ResultExporter\n(JSON/CSV/Report)]
+[EnhancedSwingApp\n(GUI Interface)] --> [AppConfig]
+
+[SourceDiscoveryService] --> WebAPI
+[SupabaseClient\n(Cloud Sync)] --> SupabaseDB
+
+@enduml

@@ -1,0 +1,62 @@
+@startuml
+title Application State Diagram
+
+[*] --> Ready
+
+Ready : Application initialized
+Ready : Waiting for user input
+
+Ready --> DocumentsLoaded : Load documents
+
+DocumentsLoaded : Both documents present
+DocumentsLoaded : Ready for analysis
+
+DocumentsLoaded --> ComparingDocuments : Click "Check Plagiarism"
+DocumentsLoaded --> DiscoveringSource : Click "Auto Find Source"
+
+DiscoveringSource : Searching for original source
+DiscoveringSource : Web API calls in progress
+
+DiscoveringSource --> SourcePopulated : Source found
+DiscoveringSource --> ManualSourcePrompt : Source not found
+
+ManualSourcePrompt : User prompted for source
+ManualSourcePrompt --> SourcePopulated : User provides file
+ManualSourcePrompt --> Ready : User cancels
+
+SourcePopulated : Source document loaded
+SourcePopulated : Ready to compare
+
+SourcePopulated --> ComparingDocuments : Auto-trigger comparison
+
+ComparingDocuments : Algorithm executing
+ComparingDocuments : Similarity calculation in progress
+
+ComparingDocuments --> ResultsGenerated : Calculation complete
+
+ResultsGenerated : Score and verdict available
+ResultsGenerated : Ready for next action
+
+ResultsGenerated --> BlockchainUpdated : Add to blockchain
+ResultsGenerated --> Exporting : Export results
+ResultsGenerated --> Ready : Return to ready state
+
+BlockchainUpdated : Block added to chain
+BlockchainUpdated : History updated
+
+BlockchainUpdated --> Saving : Auto-save enabled
+BlockchainUpdated --> Ready : Return to ready
+
+Saving : Writing to file system
+Saving : Syncing to cloud
+
+Saving --> Ready : Save complete
+
+Exporting : Generating export file
+Exporting : JSON/CSV/Report format
+
+Exporting --> Ready : Export complete
+
+Ready --> [*] : Exit application
+
+@enduml

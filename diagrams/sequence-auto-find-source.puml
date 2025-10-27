@@ -1,0 +1,65 @@
+@startuml
+title Auto Find Source Flow - Sequence Diagram
+
+actor User
+participant "EnhancedSwingApp" as UI
+participant "SourceDiscoveryService" as Discovery
+participant "Web Search API" as WebAPI
+participant "PlagiarismChecker" as Checker
+participant "Blockchain" as BC
+
+User -> UI: Enter submission text
+User -> UI: Click "Auto Find Source"
+
+activate UI
+UI -> UI: Validate submission text
+UI -> Discovery: discoverOriginalSource(text)
+activate Discovery
+
+Discovery -> Discovery: Extract key phrases
+Discovery -> WebAPI: search(excerpt)
+activate WebAPI
+WebAPI --> Discovery: search results
+deactivate WebAPI
+
+Discovery -> Discovery: Fetch and extract content
+Discovery --> UI: Optional<DiscoveredSource>
+deactivate Discovery
+
+alt Source found
+  UI -> UI: Populate textArea2 with source
+  UI -> UI: Display source URL
+
+  UI -> Checker: checkPlagiarism(submission, source, algorithm)
+  activate Checker
+  Checker -> Checker: Calculate similarity
+  Checker --> UI: Result(score, verdict)
+  deactivate Checker
+
+  UI -> UI: Display result
+  UI -> BC: addBlock(source document)
+  activate BC
+  BC --> UI: new Block
+  deactivate BC
+
+else Source not found
+  UI -> UI: Show "Source not found" dialog
+  UI -> User: Prompt for manual source file
+
+  alt User provides file
+    User -> UI: Upload source file
+    UI -> UI: Read file content
+    UI -> UI: Populate textArea2
+    UI -> Checker: checkPlagiarism(submission, source, algorithm)
+    activate Checker
+    Checker --> UI: Result
+    deactivate Checker
+  else User cancels
+    UI -> UI: Cancel operation
+  end
+end
+
+UI --> User: Display final result
+deactivate UI
+
+@enduml

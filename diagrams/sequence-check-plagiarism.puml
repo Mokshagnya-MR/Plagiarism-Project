@@ -1,0 +1,47 @@
+@startuml
+title Check Plagiarism Flow - Sequence Diagram
+
+actor User
+participant "EnhancedSwingApp" as UI
+participant "PlagiarismChecker" as Checker
+participant "SimilarityAlgorithm" as Algorithm
+participant "Blockchain" as BC
+participant "StorageManager" as Storage
+
+User -> UI: Upload Documents
+User -> UI: Select Algorithm
+User -> UI: Click "Check Plagiarism"
+
+activate UI
+UI -> UI: Validate inputs
+UI -> Checker: checkPlagiarism(doc1, doc2, algorithm)
+activate Checker
+
+Checker -> Checker: Preprocess texts
+Checker -> Algorithm: calculate(text1, text2)
+activate Algorithm
+Algorithm --> Checker: similarity score
+deactivate Algorithm
+
+Checker -> Checker: Determine verdict\n(Safe/Moderate/Suspicious)
+Checker --> UI: Result(score, verdict)
+deactivate Checker
+
+UI -> UI: Display result
+UI -> BC: addBlock(document)
+activate BC
+BC -> BC: Calculate hash
+BC -> BC: Link to previous block
+BC --> UI: new Block
+deactivate BC
+
+UI -> Storage: saveChainToFile(blockchain, file)
+activate Storage
+Storage -> Storage: Serialize blockchain
+Storage --> UI: save complete
+deactivate Storage
+
+UI --> User: Display result and update history
+deactivate UI
+
+@enduml
