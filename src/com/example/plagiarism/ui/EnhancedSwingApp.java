@@ -209,12 +209,12 @@ public class EnhancedSwingApp {
 
         JButton checkButton = new JButton("Check Plagiarism");
         checkButton.setBackground(new Color(52, 152, 219));
-        checkButton.setForeground(Color.WHITE);
+        checkButton.setForeground(Color.BLACK);
         checkButton.setFont(new Font("Arial", Font.BOLD, 12));
 
         JButton autoButton = new JButton("Auto Find Source + Check");
         autoButton.setBackground(new Color(46, 204, 113));
-        autoButton.setForeground(Color.WHITE);
+        autoButton.setForeground(Color.BLACK);
         autoButton.setFont(new Font("Arial", Font.BOLD, 12));
 
         JButton useLastSourceButton = new JButton("Use Last Source");
