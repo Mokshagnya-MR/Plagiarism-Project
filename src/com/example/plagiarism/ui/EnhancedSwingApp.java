@@ -211,11 +211,17 @@ public class EnhancedSwingApp {
         checkButton.setBackground(new Color(52, 152, 219));
         checkButton.setForeground(Color.BLACK);
         checkButton.setFont(new Font("Arial", Font.BOLD, 12));
+        checkButton.setOpaque(true);
+        checkButton.setBorderPainted(false);
+        checkButton.setFocusPainted(false);
 
         JButton autoButton = new JButton("Auto Find Source + Check");
         autoButton.setBackground(new Color(46, 204, 113));
         autoButton.setForeground(Color.BLACK);
         autoButton.setFont(new Font("Arial", Font.BOLD, 12));
+        autoButton.setOpaque(true);
+        autoButton.setBorderPainted(false);
+        autoButton.setFocusPainted(false);
 
         JButton useLastSourceButton = new JButton("Use Last Source");
         JButton saveButton = new JButton("Save Chain");
